@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Vườn Học Của Bé 🌻</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Mali:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FFF8EC;
+    --cream-2:#FFF1D6;
+    --ink:#2E2A47;
+    --coral:#FF6F59;
+    --coral-dark:#E85A44;
+    --mint:#31B9A4;
+    --sun:#FFC93C;
+    --sky:#6EC6E8;
+    --berry:#E85D75;
+    --leaf:#7BC97E;
+    --bark:#A9713F;
+    --card-shadow: 0 10px 0 rgba(46,42,71,0.08), 0 18px 30px rgba(46,42,71,0.08);
+    --radius: 26px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 8% 12%, rgba(110,198,232,0.35), transparent 40%),
+      radial-gradient(circle at 92% 85%, rgba(255,201,60,0.30), transparent 45%),
+      var(--cream);
+    min-height:100vh;
+    font-family:'Mali', cursive, sans-serif;
+    color:var(--ink);
+    -webkit-tap-highlight-color: transparent;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,.display{
+    font-family:'Baloo 2', cursive, sans-serif;
+  }
+  button{font-family:inherit; cursor:pointer;}
+  ::selection{background:var(--sun);}
+
+  /* ---------- Layout shell ---------- */
+  .wrap{max-width:960px; margin:0 auto; padding:18px 16px 60px;}
+
+  /* ---------- Header ---------- */
+  header.top{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; flex-wrap:wrap;
+    background:#fff;
+    border-radius: var(--radius);
+    padding:14px 20px;
+    box-shadow: var(--card-shadow);
+    border:3px solid var(--cream-2);
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand .logo{font-size:2.1rem; filter:drop-shadow(0 3px 0 rgba(0,0,0,0.05));}
+  .brand-text h1{margin:0; font-size:1.35rem; color:var(--coral-dark); line-height:1;}
+  .brand-text .who{margin:2px 0 0; font-size:0.92rem; color:#8A8398;}
+
+  .stat-pill{
+    display:flex; align-items:center; gap:8px;
+    background:var(--cream-2);
+    border-radius:999px;
+    padding:8px 16px;
+    font-weight:700;
+    font-size:1.05rem;
+    border:2px solid #FFE3AE;
+  }
+
+  /* Tree signature element */
+  .tree-box{
+    position:relative;
+    width:70px; height:70px;
+    flex:0 0 auto;
+  }
+  .tree-box .trunk{
+    position:absolute; bottom:0; left:50%;
+    width:10px; height:26px;
+    background:linear-gradient(180deg,#C08752,var(--bark));
+    border-radius:4px;
+    transform:translateX(-50%);
+  }
+  .tree-box .leaf{
+    position:absolute;
+    border-radius:50%;
+    background:var(--leaf);
+    opacity:0;
+    transform:scale(0.3);
+    transition:all .6s cubic-bezier(.34,1.56,.64,1);
+  }
+  .tree-box .fruit{
+    position:absolute;
+    width:7px; height:7px;
+    border-radius:50%;
+    background:var(--coral);
+    opacity:0;
+    transform:scale(0.2);
+    transition:all .5s ease .1s;
+  }
+  .tree-box .flower{
+    position:absolute;
+    font-size:10px;
+    opacity:0;
+    transform:scale(0.2);
+    transition:all .5s ease .1s;
+  }
+  /* leaf positions */
+  .tree-box .l1{width:34px;height:34px; left:15px; top:20px;}
+  .tree-box .l2{width:28px;height:28px; left:2px; top:28px;}
+  .tree-box .l3{width:28px;height:28px; left:36px; top:28px;}
+  .tree-box .l4{width:22px;height:22px; left:20px; top:8px;}
+  .tree-box.stage-0 .trunk{height:14px;}
+  .tree-box.stage-0 .l1{opacity:1; transform:scale(0.5);}
+  .tree-box.stage-1 .l1,.tree-box.stage-1 .l2{opacity:1; transform:scale(0.85);}
+  .tree-box.stage-2 .l1,.tree-box.stage-2 .l2,.tree-box.stage-2 .l3{opacity:1; transform:scale(1);}
+  .tree-box.stage-3 .l1,.tree-box.stage-3 .l2,.tree-box.stage-3 .l3,.tree-box.stage-3 .l4{opacity:1; transform:scale(1);}
+  .tree-box.stage-3 .flower{opacity:1; transform:scale(1);}
+  .tree-box.stage-4 .l1,.tree-box.stage-4 .l2,.tree-box.stage-4 .l3,.tree-box.stage-4 .l4{opacity:1; transform:scale(1);}
+  .tree-box.stage-4 .fruit{opacity:1; transform:scale(1);}
+  .tree-box.stage-4 .flower{opacity:1; transform:scale(1);}
+
+  /* ---------- Tabs ---------- */
+  .tabs{
+    display:flex; gap:10px; overflow-x:auto;
+    margin:18px 0; padding-bottom:6px;
+    scrollbar-width:thin;
+  }
+  .tab{
+    flex:0 0 auto;
+    background:#fff;
+    border:3px solid var(--cream-2);
+    border-radius:18px;
+    padding:10px 16px;
+    font-weight:700;
+    font-size:0.98rem;
+    display:flex; align-items:center; gap:8px;
+    color:var(--ink);
+    box-shadow: 0 4px 0 rgba(46,42,71,0.06);
+    transition: transform .15s ease, background .15s ease, color .15s ease;
+    white-space:nowrap;
+  }
+  .tab .ic{font-size:1.2rem;}
+  .tab:hover{transform:translateY(-2px);}
+  .tab.active{
+    background:var(--coral);
+    color:#fff;
+    border-color:var(--coral-dark);
+  }
+
+  /* ---------- Progress bar to next badge ---------- */
+  .progress-wrap{
+    background:#fff; border-radius:18px; padding:12px 16px;
+    box-shadow: var(--card-shadow); border:3px solid var(--cream-2);
+    margin-bottom:18px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .progress-wrap .label{font-size:0.85rem; color:#8A8398; font-weight:700; white-space:nowrap;}
+  .progress-track{
+    flex:1; height:16px; background:var(--cream-2); border-radius:999px; overflow:hidden;
+    position:relative;
+  }
+  .progress-fill{
+    height:100%; background:linear-gradient(90deg, var(--sun), var(--coral));
+    border-radius:999px; transition:width .5s ease;
+  }
+
+  /* ---------- Question card ---------- */
+  .card{
+    background:#fff;
+    border-radius: var(--radius);
+    padding:28px 24px 24px;
+    box-shadow: var(--card-shadow);
+    border:3px solid var(--cream-2);
+    text-align:center;
+    position:relative;
+    min-height:340px;
+    display:flex; flex-direction:column; justify-content:space-between;
+  }
+  .cat-title{
+    font-size:1rem; color:var(--mint); font-weight:700; margin:0 0 6px;
+  }
+  .question-text{
+    font-size:1.5rem; font-weight:700; margin:0 0 18px; color:var(--ink);
+  }
+  .visual-area{
+    font-size:2.6rem;
+    margin-bottom:18px;
+    min-height:64px;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    flex-wrap:wrap;
+  }
+  .shape-demo{
+    width:90px; height:90px;
+  }
+  .options{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:14px;
+    max-width:520px;
+    margin:0 auto;
+    width:100%;
+  }
+  .options.two-col-wide{grid-template-columns: 1fr 1fr;}
+  .opt-btn{
+    background:var(--cream-2);
+    border:3px solid #FFE3AE;
+    border-radius:18px;
+    padding:16px 10px;
+    font-size:1.3rem;
+    font-weight:700;
+    color:var(--ink);
+    transition: transform .12s ease, background .15s ease, border-color .15s ease;
+  }
+  .opt-btn:hover{transform:translateY(-3px);}
+  .opt-btn:active{transform:translateY(0);}
+  .opt-btn.correct-flash{
+    background:var(--leaf); border-color:#4E9F52; color:#fff;
+    animation: pop .4s ease;
+  }
+  .opt-btn.wrong-flash{
+    background:var(--berry); border-color:#C24460; color:#fff;
+    animation: shake .4s ease;
+  }
+  .opt-btn.dim{opacity:.55;}
+  @keyframes pop{ 0%{transform:scale(1);} 40%{transform:scale(1.08);} 100%{transform:scale(1);} }
+  @keyframes shake{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
+
+  .group-cards{
+    display:flex; gap:16px; justify-content:center; flex-wrap:wrap;
+  }
+  .group-card{
+    background:var(--cream-2);
+    border:3px solid #FFE3AE;
+    border-radius:18px;
+    padding:18px 22px;
+    font-size:2rem;
+    min-width:140px;
+    transition: transform .12s ease;
+  }
+  .group-card:hover{transform:translateY(-3px);}
+
+  .next-btn{
+    display:none;
+    margin:16px auto 0;
+    background:var(--coral);
+    color:#fff;
+    border:none;
+    border-radius:16px;
+    padding:12px 28px;
+    font-size:1.1rem;
+    font-weight:700;
+    box-shadow: 0 4px 0 var(--coral-dark);
+  }
+  .next-btn.show{display:inline-block; animation: floatIn .3s ease;}
+  @keyframes floatIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+  .float-points{
+    position:absolute;
+    font-family:'Baloo 2', cursive; font-weight:800; font-size:1.4rem;
+    color:var(--sun);
+    text-shadow: 0 2px 0 rgba(0,0,0,0.08);
+    pointer-events:none;
+    animation: floatUp 1s ease forwards;
+  }
+  @keyframes floatUp{
+    0%{opacity:0; transform:translateY(0) scale(0.6);}
+    20%{opacity:1; transform:translateY(-10px) scale(1.1);}
+    100%{opacity:0; transform:translateY(-70px) scale(1);}
+  }
+
+  /* ---------- Mascot bar ---------- */
+  .mascot-bar{
+    margin-top:18px;
+    background:#fff;
+    border-radius:18px;
+    padding:14px 18px;
+    box-shadow: var(--card-shadow);
+    border:3px solid var(--cream-2);
+    display:flex; align-items:center; gap:12px;
+  }
+  .mascot-bar .face{font-size:2rem;}
+  .mascot-bar .say{font-size:1rem; font-weight:600; color:var(--ink);}
+
+  /* ---------- Modal overlay ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(46,42,71,0.55);
+    display:flex; align-items:center; justify-content:center;
+    z-index:50; padding:20px;
+  }
+  .modal{
+    background:var(--cream); border-radius:28px; padding:32px 28px;
+    max-width:420px; width:100%; text-align:center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+    border:4px solid #fff;
+  }
+  .modal h2{margin-top:0; color:var(--coral-dark);}
+  .modal input{
+    width:100%; padding:12px 14px; border-radius:14px; border:3px solid var(--cream-2);
+    font-family:'Mali'; font-size:1.1rem; margin:14px 0; text-align:center;
+  }
+  .modal button.primary{
+    background:var(--coral); color:#fff; border:none; border-radius:16px;
+    padding:12px 30px; font-size:1.1rem; font-weight:700; box-shadow:0 4px 0 var(--coral-dark);
+  }
+  .badge-emoji{font-size:4rem; margin:6px 0;}
+
+  /* certificate */
+  .certificate{
+    background:#fff;
+    border:6px double var(--sun);
+    border-radius:20px;
+    padding:30px 20px;
+    position:relative;
+  }
+  .certificate .title{font-size:1.6rem; color:var(--coral-dark); margin:0;}
+  .certificate .name{font-size:1.9rem; margin:12px 0; color:var(--ink); font-family:'Baloo 2';}
+  .certificate .sub{color:#8A8398; font-size:0.95rem;}
+  .certificate .stamp{position:absolute; top:14px; right:18px; font-size:2.2rem; transform:rotate(12deg);}
+
+  .modal-actions{display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap:wrap;}
+  .btn-secondary{
+    background:#fff; color:var(--ink); border:2px solid var(--cream-2);
+    border-radius:14px; padding:10px 18px; font-weight:700;
+  }
+
+  /* confetti */
+  .confetti-piece{
+    position:fixed; top:-20px; font-size:1.4rem;
+    animation: fall linear forwards;
+    z-index:60; pointer-events:none;
+  }
+  @keyframes fall{
+    to{ transform: translateY(105vh) rotate(360deg); opacity:0.9; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+  }
+
+  @media (max-width:560px){
+    .options{grid-template-columns: 1fr 1fr;}
+    .brand-text h1{font-size:1.1rem;}
+    .question-text{font-size:1.25rem;}
+  }
+
+  @media print{
+    body *{visibility:hidden;}
+    #certificateModal, #certificateModal *{visibility:visible;}
+    #certificateModal{position:absolute; left:0; top:0; width:100%; background:#fff;}
+    .modal-actions{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">🌻</div>
+      <div class="brand-text">
+        <h1>Vườn Học Của Bé</h1>
+        <p class="who" id="whoText">Chào mừng bé đến khu vườn tri thức!</p>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div class="stat-pill">⭐ <span id="starCount">0</span></div>
+      <div class="tree-box stage-0" id="tree" title="Cây tri thức của bé">
+        <div class="trunk"></div>
+        <div class="leaf l1"></div>
+        <div class="leaf l2"></div>
+        <div class="leaf l3"></div>
+        <div class="leaf l4"></div>
+        <div class="flower" style="left:18px; top:14px;">🌸</div>
+        <div class="flower" style="left:38px; top:24px;">🌸</div>
+        <div class="fruit" style="left:14px; top:26px;"></div>
+        <div class="fruit" style="left:44px; top:20px;"></div>
+        <div class="fruit" style="left:30px; top:34px;"></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="progress-wrap">
+    <div class="label" id="badgeLabel">Huy hiệu tiếp theo</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="label" id="progressNum">0 / 10 ⭐</div>
+  </div>
+
+  <div class="card" id="card">
+    <div>
+      <p class="cat-title" id="catTitle">Đếm số</p>
+      <h2 class="question-text" id="questionText">Đang tải câu hỏi...</h2>
+      <div class="visual-area" id="visualArea"></div>
+    </div>
+    <div class="options" id="options"></div>
+    <button class="next-btn" id="nextBtn">Câu tiếp theo ▶</button>
+  </div>
+
+  <div class="mascot-bar">
+    <div class="face" id="mascotFace">🐝</div>
+    <div class="say" id="mascotSay">Bé ơi, chọn đáp án đúng nhé!</div>
+  </div>
+</div>
+
+<!-- Welcome modal -->
+<div class="overlay" id="welcomeModal">
+  <div class="modal">
+    <div style="font-size:3rem;">🐝🌼</div>
+    <h2>Chào bé!</h2>
+    <p>Bé tên là gì nè?</p>
+    <input type="text" id="nameInput" placeholder="Nhập tên của bé..." maxlength="20">
+    <div><button class="primary" id="startBtn">Bắt đầu học nào! 🚀</button></div>
+  </div>
+</div>
+
+<!-- Badge modal -->
+<div class="overlay" id="badgeModal" style="display:none;">
+  <div class="modal">
+    <div class="badge-emoji" id="badgeEmoji">🏅</div>
+    <h2 id="badgeName">Huy hiệu mới!</h2>
+    <p id="badgeDesc">Bé thật giỏi!</p>
+    <div class="modal-actions">
+      <button class="primary" id="badgeCloseBtn">Tuyệt vời! Học tiếp 🌟</button>
+    </div>
+  </div>
+</div>
+
+<!-- Certificate modal -->
+<div class="overlay" id="certificateModal" style="display:none;">
+  <div class="modal">
+    <div class="certificate">
+      <div class="stamp">🏆</div>
+      <p class="sub">GIẤY KHEN</p>
+      <h2 class="title">Chúc mừng bé</h2>
+      <p class="name" id="certName">Bé Yêu</p>
+      <p class="sub">đã hoàn thành xuất sắc<br>chương trình Vườn Học Của Bé</p>
+      <p class="sub" id="certDate"></p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="printCertBtn">🖨️ In giấy khen</button>
+      <button class="primary" id="certCloseBtn">Học tiếp nhé! 🌟</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= STATE ================= */
+  const state = {
+    name: "",
+    stars: 0,
+    correct: 0,
+    wrong: 0,
+    category: "count",
+    current: null,
+    awardedBadges: [],
+    awardedCert: false
+  };
+
+  const BADGES = [
+    {stars:10, key:"b10", emoji:"🌱", name:"Người Mới Bắt Đầu", desc:"Bé đã đạt 10 ngôi sao đầu tiên!"},
+    {stars:30, key:"b30", emoji:"🐝", name:"Ong Chăm Chỉ", desc:"Bé làm bài chăm chỉ như chú ong nhỏ!"},
+    {stars:60, key:"b60", emoji:"⭐", name:"Ngôi Sao Sáng", desc:"Bé toả sáng như một ngôi sao thật rồi!"},
+    {stars:100, key:"b100", emoji:"🏆", name:"Nhà Vô Địch Nhỏ", desc:"Bé xứng đáng nhận giấy khen đặc biệt!"}
+  ];
+
+  const CATEGORIES = [
+    {key:"count", icon:"🔢", label:"Đếm số", gen: genCount},
+    {key:"math", icon:"➕", label:"Cộng trừ", gen: genMath},
+    {key:"letters", icon:"🔤", label:"Chữ cái", gen: genLetters},
+    {key:"compare", icon:"⚖️", label:"So sánh", gen: genCompare},
+    {key:"colors", icon:"🎨", label:"Màu sắc", gen: genColors},
+    {key:"shapes", icon:"🔷", label:"Hình khối", gen: genShapes}
+  ];
+
+  const MASCOT_LINES_OK = [
+    "Chính xác rồi! Bé giỏi quá!",
+    "Tuyệt vời ông mặt trời!",
+    "Đúng rồi đó bé ơi!",
+    "Wao, bé thông minh ghê!",
+    "Chuẩn không cần chỉnh!"
+  ];
+  const MASCOT_LINES_NO = [
+    "Chưa đúng rồi, thử lại lần sau nhé!",
+    "Gần đúng rồi, cố lên bé ơi!",
+    "Không sao đâu, mình học tiếp nhé!",
+    "Sai một chút thôi, bé giỏi mà!"
+  ];
+
+  /* ================= DOM refs ================= */
+  const el = (id)=>document.getElementById(id);
+  const tabsEl = el("tabs");
+  const catTitleEl = el("catTitle");
+  const questionTextEl = el("questionText");
+  const visualAreaEl = el("visualArea");
+  const optionsEl = el("options");
+  const nextBtn = el("nextBtn");
+  const starCountEl = el("starCount");
+  const treeEl = el("tree");
+  const mascotFaceEl = el("mascotFace");
+  const mascotSayEl = el("mascotSay");
+  const progressFillEl = el("progressFill");
+  const progressNumEl = el("progressNum");
+  const badgeLabelEl = el("badgeLabel");
+  const whoTextEl = el("whoText");
+  const cardEl = el("card");
+
+  /* ================= Init tabs ================= */
+  CATEGORIES.forEach((c,i)=>{
+    const b = document.createElement("button");
+    b.className = "tab" + (i===0 ? " active" : "");
+    b.innerHTML = `<span class="ic">${c.icon}</span> ${c.label}`;
+    b.dataset.key = c.key;
+    b.addEventListener("click", ()=>{
+      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+      b.classList.add("active");
+      state.category = c.key;
+      nextQuestion();
+    });
+    tabsEl.appendChild(b);
+  });
+
+  /* ================= Welcome ================= */
+  el("startBtn").addEventListener("click", ()=>{
+    const v = el("nameInput").value.trim();
+    state.name = v || "Bé Yêu";
+    whoTextEl.textContent = "Chào " + state.name + ", cùng học nào!";
+    el("welcomeModal").style.display = "none";
+    nextQuestion();
+  });
+  el("nameInput").addEventListener("keydown", (e)=>{ if(e.key==="Enter") el("startBtn").click(); });
+
+  /* ================= Helpers ================= */
+  function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function pick(arr){ return arr[rand(0,arr.length-1)]; }
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = rand(0,i);
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+    return a;
+  }
+  function uniqueNumberOptions(correct, min, max, count){
+    const set = new Set([correct]);
+    while(set.size < count){
+      set.add(rand(min,max));
+    }
+    return shuffle(Array.from(set));
+  }
+
+  /* ================= Question generators ================= */
+  function genCount(){
+    const emojis = ["🍎","🍌","⭐","🐟","🐝","🍓","🐣","🎈"];
+    const n = rand(1,10);
+    const e = pick(emojis);
+    const opts = uniqueNumberOptions(n, 1, 12, 4);
+    return {
+      title: "Đếm số",
+      question: "Có bao nhiêu " + e + " ?",
+      visualHTML: e.repeat(n),
+      options: opts.map(String),
+      correct: String(n),
+      type:"grid"
+    };
+  }
+
+  function genMath(){
+    const op = pick(["+","-"]);
+    let a,b,result;
+    if(op==="+"){
+      a = rand(0,7); b = rand(0, 10-a); result = a+b;
+    } else {
+      a = rand(1,10); b = rand(0,a); result = a-b;
+    }
+    const opts = uniqueNumberOptions(result, 0, 10, 4);
+    return {
+      title:"Cộng trừ",
+      question: `${a} ${op} ${b} = ?`,
+      visualHTML: `<span style="font-size:2.2rem;">🔢</span>`,
+      options: opts.map(String),
+      correct: String(result),
+      type:"grid"
+    };
+  }
+
+  const LETTER_ITEMS = [
+    {emoji:"🐝", word:"Con Ong", letter:"O"},
+    {emoji:"🍎", word:"Quả Táo", letter:"T"},
+    {emoji:"🐟", word:"Con Cá", letter:"C"},
+    {emoji:"🐘", word:"Con Voi", letter:"V"},
+    {emoji:"⭐", word:"Ngôi Sao", letter:"N"},
+    {emoji:"🐔", word:"Con Gà", letter:"G"},
+    {emoji:"🐷", word:"Con Heo", letter:"H"},
+    {emoji:"🍍", word:"Quả Dứa", letter:"D"},
+    {emoji:"🦁", word:"Sư Tử", letter:"S"},
+    {emoji:"🦋", word:"Con Bướm", letter:"B"}
+  ];
+  function genLetters(){
+    const item = pick(LETTER_ITEMS);
+    const others = shuffle(LETTER_ITEMS.filter(x=>x.letter!==item.letter)).slice(0,3);
+    const opts = shuffle([item.letter, ...others.map(o=>o.letter)]);
+    return {
+      title:"Chữ cái",
+      question: `${item.word} bắt đầu bằng chữ gì?`,
+      visualHTML: item.emoji,
+      options: opts,
+      correct: item.letter,
+      type:"grid"
+    };
+  }
+
+  function genCompare(){
+    const emojis = ["🍇","🐠","🎈","🍬","⭐","🍪"];
+    const e = pick(emojis);
+    let a = rand(1,9), b = rand(1,9);
+    while(a===b){ b = rand(1,9); }
+    const askMore = Math.random() < 0.5;
+    const correctSide = askMore ? (a>b ? "left":"right") : (a<b ? "left":"right");
+    return {
+      title:"So sánh",
+      question: askMore ? "Bên nào có NHIỀU hơn?" : "Bên nào có ÍT hơn?",
+      type:"groups",
+      left: e.repeat(a),
+      right: e.repeat(b),
+      correct: correctSide
+    };
+  }
+
+  const COLOR_ITEMS = [
+    {name:"Đỏ", hex:"#FF5A52"},
+    {name:"Vàng", hex:"#FFC93C"},
+    {name:"Xanh Dương", hex:"#4EA8DE"},
+    {name:"Xanh Lá", hex:"#5FBF6E"},
+    {name:"Cam", hex:"#FF8C42"},
+    {name:"Tím", hex:"#9B6FD1"},
+    {name:"Hồng", hex:"#F576B0"},
+    {name:"Nâu", hex:"#A9713F"}
+  ];
+  function genColors(){
+    const item = pick(COLOR_ITEMS);
+    const others = shuffle(COLOR_ITEMS.filter(c=>c.name!==item.name)).slice(0,3);
+    const opts = shuffle([item.name, ...others.map(o=>o.name)]);
+    return {
+      title:"Màu sắc",
+      question:"Đây là màu gì?",
+      type:"grid",
+      visualHTML: `<div style="width:90px;height:90px;border-radius:50%;background:${item.hex};margin:0 auto;border:4px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,0.15);"></div>`,
+      options: opts,
+      correct: item.name
+    };
+  }
+
+  const SHAPE_ITEMS = ["Hình Tròn","Hình Vuông","Hình Tam Giác","Hình Chữ Nhật","Hình Ngôi Sao","Hình Trái Tim"];
+  function shapeSVG(name){
+    const c = "#6EC6E8";
+    switch(name){
+      case "Hình Tròn": return `<svg width="90" height="90"><circle cx="45" cy="45" r="40" fill="${c}"/></svg>`;
+      case "Hình Vuông": return `<svg width="90" height="90"><rect x="8" y="8" width="74" height="74" rx="8" fill="${c}"/></svg>`;
+      case "Hình Tam Giác": return `<svg width="90" height="90"><polygon points="45,8 85,80 5,80" fill="${c}"/></svg>`;
+      case "Hình Chữ Nhật": return `<svg width="90" height="90"><rect x="4" y="22" width="82" height="46" rx="8" fill="${c}"/></svg>`;
+      case "Hình Ngôi Sao": return `<svg width="90" height="90" viewBox="0 0 51 48"><polygon points="25.5,1 31,18 49,18 34,29 39,47 25.5,36 12,47 17,29 2,18 20,18" fill="${c}"/></svg>`;
+      case "Hình Trái Tim": return `<svg width="90" height="90" viewBox="0 0 32 29"><path d="M16 29 C4 20 0 13 0 8 C0 3 4 0 8 0 C12 0 15 2 16 5 C17 2 20 0 24 0 C28 0 32 3 32 8 C32 13 28 20 16 29 Z" fill="${c}"/></svg>`;
+      default: return "";
+    }
+  }
+  function genShapes(){
+    const name = pick(SHAPE_ITEMS);
+    const others = shuffle(SHAPE_ITEMS.filter(s=>s!==name)).slice(0,3);
+    const opts = shuffle([name, ...others]);
+    return {
+      title:"Hình khối",
+      question:"Đây là hình gì?",
+      type:"grid",
+      visualHTML: shapeSVG(name),
+      options: opts,
+      correct: name
+    };
+  }
+
+  /* ================= Rendering ================= */
+  function renderQuestion(catKey){
+    const cat = CATEGORIES.find(c=>c.key===catKey);
+    const q = cat.gen();
+    state.current = q;
+    catTitleEl.textContent = q.title;
+    questionTextEl.textContent = q.question;
+    nextBtn.classList.remove("show");
+
+    if(q.type === "grid"){
+      visualAreaEl.innerHTML = q.visualHTML || "";
+      optionsEl.className = "options";
+      optionsEl.innerHTML = "";
+      q.options.forEach(opt=>{
+        const b = document.createElement("button");
+        b.className = "opt-btn";
+        b.textContent = opt;
+        b.addEventListener("click", ()=>handleAnswer(opt===q.correct, b));
+        optionsEl.appendChild(b);
+      });
+    } else if(q.type === "groups"){
+      visualAreaEl.innerHTML = "";
+      optionsEl.className = "options two-col-wide";
+      optionsEl.innerHTML = "";
+      const leftBtn = document.createElement("button");
+      leftBtn.className = "opt-btn"; leftBtn.style.fontSize = "1.8rem";
+      leftBtn.innerHTML = q.left;
+      leftBtn.addEventListener("click", ()=>handleAnswer(q.correct==="left", leftBtn));
+      const rightBtn = document.createElement("button");
+      rightBtn.className = "opt-btn"; rightBtn.style.fontSize = "1.8rem";
+      rightBtn.innerHTML = q.right;
+      rightBtn.addEventListener("click", ()=>handleAnswer(q.correct==="right", rightBtn));
+      optionsEl.appendChild(leftBtn);
+      optionsEl.appendChild(rightBtn);
+    }
+  }
+
+  function nextQuestion(){
+    renderQuestion(state.category);
+  }
+
+  function handleAnswer(isCorrect, btnEl){
+    const allBtns = optionsEl.querySelectorAll(".opt-btn");
+    allBtns.forEach(b=>{ b.disabled = true; b.classList.add("dim"); });
+    btnEl.classList.remove("dim");
+
+    if(isCorrect){
+      btnEl.classList.add("correct-flash");
+      awardStars(btnEl, 10);
+      state.correct++;
+      mascotSayEl.textContent = pick(MASCOT_LINES_OK);
+      mascotFaceEl.textContent = "😄";
+      burstConfetti();
+    } else {
+      btnEl.classList.add("wrong-flash");
+      state.wrong++;
+      mascotSayEl.textContent = pick(MASCOT_LINES_NO);
+      mascotFaceEl.textContent = "🙂";
+      // highlight correct one for the grid type
+      allBtns.forEach(b=>{
+        if(b.textContent === state.current.correct){ b.classList.remove("dim"); b.classList.add("correct-flash"); }
+      });
+    }
+    nextBtn.classList.add("show");
+  }
+
+  nextBtn.addEventListener("click", nextQuestion);
+
+  /* ================= Rewards ================= */
+  function awardStars(anchorEl, amount){
+    state.stars += amount;
+    starCountEl.textContent = state.stars;
+    updateTree();
+    updateProgress();
+    floatPoints(anchorEl, amount);
+    checkBadges();
+  }
+
+  function floatPoints(anchorEl, amount){
+    const rect = anchorEl.getBoundingClientRect();
+    const f = document.createElement("div");
+    f.className = "float-points";
+    f.textContent = "+" + amount;
+    f.style.left = (rect.left + rect.width/2 - 16) + "px";
+    f.style.top = (rect.top + window.scrollY - 10) + "px";
+    document.body.appendChild(f);
+    setTimeout(()=>f.remove(), 1000);
+  }
+
+  function updateTree(){
+    let stage = 0;
+    if(state.stars >= 100) stage = 4;
+    else if(state.stars >= 60) stage = 3;
+    else if(state.stars >= 30) stage = 2;
+    else if(state.stars >= 10) stage = 1;
+    treeEl.className = "tree-box stage-" + stage;
+  }
+
+  function updateProgress(){
+    const next = BADGES.find(b=>state.stars < b.stars);
+    if(!next){
+      badgeLabelEl.textContent = "Đã đạt mọi huy hiệu! 🎉";
+      progressFillEl.style.width = "100%";
+      progressNumEl.textContent = state.stars + " ⭐";
+      return;
+    }
+    const prevThreshold = BADGES.reduce((acc,b)=> (b.stars < next.stars && b.stars > acc ? b.stars : acc), 0);
+    const pct = Math.min(100, Math.round(((state.stars - prevThreshold) / (next.stars - prevThreshold)) * 100));
+    badgeLabelEl.textContent = "Huy hiệu " + next.name;
+    progressFillEl.style.width = pct + "%";
+    progressNumEl.textContent = state.stars + " / " + next.stars + " ⭐";
+  }
+
+  function checkBadges(){
+    BADGES.forEach(b=>{
+      if(state.stars >= b.stars && !state.awardedBadges.includes(b.key)){
+        state.awardedBadges.push(b.key);
+        showBadge(b);
+      }
+    });
+  }
+
+  function showBadge(b){
+    el("badgeEmoji").textContent = b.emoji;
+    el("badgeName").textContent = b.name;
+    el("badgeDesc").textContent = b.desc;
+    el("badgeModal").style.display = "flex";
+    burstConfetti(30);
+  }
+  el("badgeCloseBtn").addEventListener("click", ()=>{
+    el("badgeModal").style.display = "none";
+    if(state.stars >= 100 && !state.awardedCert){
+      state.awardedCert = true;
+      showCertificate();
+    }
+  });
+
+  function showCertificate(){
+    el("certName").textContent = state.name;
+    const d = new Date();
+    el("certDate").textContent = "Ngày " + d.getDate() + " tháng " + (d.getMonth()+1) + " năm " + d.getFullYear();
+    el("certificateModal").style.display = "flex";
+    burstConfetti(50);
+  }
+  el("certCloseBtn").addEventListener("click", ()=>{ el("certificateModal").style.display = "none"; });
+  el("printCertBtn").addEventListener("click", ()=>{ window.print(); });
+
+  /* ================= Confetti ================= */
+  const CONFETTI_EMOJI = ["🎉","⭐","🌸","🎈","✨","🍬"];
+  function burstConfetti(count){
+    count = count || 14;
+    for(let i=0;i<count;i++){
+      const c = document.createElement("div");
+      c.className = "confetti-piece";
+      c.textContent = pick(CONFETTI_EMOJI);
+      c.style.left = rand(0,100) + "vw";
+      c.style.animationDuration = (rand(18,32)/10) + "s";
+      c.style.fontSize = rand(14,26) + "px";
+      document.body.appendChild(c);
+      setTimeout(()=>c.remove(), 3300);
+    }
+  }
+
+  /* ================= Boot ================= */
+  updateProgress();
+  updateTree();
+})();
+</script>
+</body>
+</html>
