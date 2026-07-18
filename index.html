@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Bé Vui Học – Tìm Chữ, Tìm Số</title>
+<meta name="description" content="Trò chơi học chữ cái, con số, làm toán, ghép chữ, ghép cặp và tập viết cho bé.">
+<meta name="theme-color" content="#3FB6E8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Bé Vui Học">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@500;600;700&family=Playwrite+VN+Guides&family=Playwrite+VN:wght@400&display=swap" rel="stylesheet">
 <style>
@@ -397,6 +406,20 @@
     text-align:center;color:#7a6d92;font-size:12px;margin-top:24px;
   }
 
+  .install-btn{
+    display:block;
+    margin:16px auto 0;
+    border:none;
+    background:var(--grass);
+    color:#fff;
+    font-family:'Baloo 2',cursive;font-weight:700;font-size:14px;
+    padding:11px 22px;
+    border-radius:999px;
+    box-shadow:0 5px 0 #3f9c5b;
+    cursor:pointer;
+  }
+  .install-btn:active{transform:translateY(3px);box-shadow:none;}
+
   .stats-toggle{
     display:block;
     margin:18px auto 0;
@@ -544,6 +567,8 @@
       </div>
     </div>
   </div>
+
+  <button class="install-btn" id="installBtn" style="display:none;">📲 Cài ứng dụng vào máy</button>
 
   <button class="stats-toggle" id="statsToggle">⏱️ Thời gian bé chơi</button>
   <div class="stats-panel" id="statsPanel" style="display:none;">
@@ -1664,6 +1689,41 @@
   loadProgress();
   applyRestoredState();
   renderRound(false);
+})();
+</script>
+
+<script>
+(function(){
+  // Đăng ký service worker để trang chạy được khi không có mạng và cài đặt
+  // được như một ứng dụng trên màn hình chính.
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+
+  // Nút "Cài ứng dụng": chỉ hiện khi trình duyệt cho phép cài (Chrome/Edge
+  // trên Android & máy tính). Trên iPhone/Safari người dùng dùng "Chia sẻ →
+  // Thêm vào MH chính", nên không có nút này là bình thường.
+  let deferredPrompt = null;
+  const installBtn = document.getElementById('installBtn');
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if(installBtn) installBtn.style.display = 'block';
+  });
+  if(installBtn){
+    installBtn.addEventListener('click', async () => {
+      if(!deferredPrompt) return;
+      deferredPrompt.prompt();
+      try{ await deferredPrompt.userChoice; }catch(e){}
+      deferredPrompt = null;
+      installBtn.style.display = 'none';
+    });
+  }
+  window.addEventListener('appinstalled', () => {
+    if(installBtn) installBtn.style.display = 'none';
+  });
 })();
 </script>
 </body>
