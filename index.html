@@ -521,6 +521,7 @@
   .badge-req{font-size:11px;color:#9a8fb0;font-weight:600;margin-top:2px;}
   .badge-item.earned .badge-req{color:var(--grass);}
   .feedback-card .badge-sub{font-size:16px;color:var(--coral);margin-top:2px;font-weight:700;}
+  .feedback-card .write-stars{font-size:28px;margin-top:6px;letter-spacing:4px;}
 
   @media (prefers-reduced-motion: reduce){
     *{animation:none !important;transition:none !important;}
@@ -625,7 +626,7 @@
         <canvas id="writeCanvas"></canvas>
       </div>
       <div class="write-example" id="writeExample" style="display:none;"></div>
-      <div class="write-hint">Tô theo nét chữ mờ trên khung ô li — đúng mẫu chữ tập viết tiểu học nhé!</div>
+      <div class="write-hint">Tô theo nét chữ mờ rồi bấm “Xong rồi!” để cô chấm sao ⭐ cho bé nhé!</div>
       <div class="write-controls">
         <button class="write-btn clear" id="writeClearBtn">🧹 Xóa</button>
         <button class="write-btn done" id="writeDoneBtn">✅ Xong rồi!</button>
@@ -1660,6 +1661,10 @@
   let writePenColor = TILE_COLORS[0];
   let writePenWidth = 8;
   let lastWriteWrapWidth = 0;
+  // Hai lớp ẩn để chấm điểm nét viết: maskCanvas = chữ mẫu (vùng mục tiêu),
+  // inkCanvas = nét bé viết. So khớp hai lớp này để tính điểm.
+  let maskCanvas = null, maskCtx = null;
+  let inkCanvas = null, inkCtx = null;
   const WRITE_GUIDE_FONT = 'Playwrite VN Guides';
 
   function setupWriteCanvas(){
@@ -1679,6 +1684,18 @@
     writePenColor = TILE_COLORS[state.write.index % TILE_COLORS.length];
     // Nét bút vừa phải so với kích thước ô viết, không quá dày so với nét chữ mẫu
     writePenWidth = Math.max(5, Math.min(9, size * 0.028));
+
+    // Chuẩn bị hai lớp ẩn (cùng kích thước) để chấm điểm.
+    if(!maskCanvas) maskCanvas = document.createElement('canvas');
+    if(!inkCanvas) inkCanvas = document.createElement('canvas');
+    maskCanvas.width = canvas.width; maskCanvas.height = canvas.height;
+    inkCanvas.width = canvas.width; inkCanvas.height = canvas.height;
+    maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+    inkCtx = inkCanvas.getContext('2d', { willReadFrequently: true });
+    maskCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    inkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    inkCtx.clearRect(0, 0, size, size); // chữ mới → xoá nét cũ
+
     drawWriteGuide();
     // Font mẫu chữ tải qua mạng nên có thể chưa sẵn sàng lúc vẽ lần đầu;
     // vẽ lại khi tải xong để hiện đúng nét chữ chuẩn.
@@ -1789,6 +1806,23 @@
     writeCtx.strokeText(value, w / 2, lineBaseline);
     writeCtx.fillText(value, w / 2, lineBaseline);
     writeCtx.restore();
+
+    // Vẽ chữ mẫu vào lớp ẩn (đặc, hơi dày hơn để có dung sai cho bé) làm vùng
+    // mục tiêu khi chấm điểm.
+    if(maskCtx){
+      maskCtx.clearRect(0, 0, w, h);
+      maskCtx.save();
+      maskCtx.font = writeCtx.font;
+      maskCtx.fillStyle = '#000';
+      maskCtx.strokeStyle = '#000';
+      maskCtx.lineJoin = 'round';
+      maskCtx.lineWidth = Math.max(2, fontSize * 0.05);
+      maskCtx.textAlign = 'center';
+      maskCtx.textBaseline = 'alphabetic';
+      maskCtx.strokeText(value, w / 2, lineBaseline);
+      maskCtx.fillText(value, w / 2, lineBaseline);
+      maskCtx.restore();
+    }
   }
 
   function writeCanvasPos(e){
@@ -1805,6 +1839,12 @@
     writeCtx.fillStyle = writePenColor;
     writeCtx.arc(p.x, p.y, writePenWidth / 2, 0, Math.PI * 2);
     writeCtx.fill();
+    if(inkCtx){
+      inkCtx.beginPath();
+      inkCtx.fillStyle = '#000';
+      inkCtx.arc(p.x, p.y, writePenWidth / 2, 0, Math.PI * 2);
+      inkCtx.fill();
+    }
     e.preventDefault();
   }
 
@@ -1819,6 +1859,16 @@
     writeCtx.moveTo(writeLastX, writeLastY);
     writeCtx.lineTo(p.x, p.y);
     writeCtx.stroke();
+    if(inkCtx){
+      inkCtx.strokeStyle = '#000';
+      inkCtx.lineWidth = writePenWidth;
+      inkCtx.lineCap = 'round';
+      inkCtx.lineJoin = 'round';
+      inkCtx.beginPath();
+      inkCtx.moveTo(writeLastX, writeLastY);
+      inkCtx.lineTo(p.x, p.y);
+      inkCtx.stroke();
+    }
     writeLastX = p.x; writeLastY = p.y;
     e.preventDefault();
   }
@@ -1833,19 +1883,93 @@
   window.addEventListener('pointercancel', writePointerUp);
 
   els.writeClearBtn.addEventListener('click', () => {
+    if(inkCtx){
+      const c = els.writeCanvas, dpr = window.devicePixelRatio || 1;
+      inkCtx.clearRect(0, 0, c.width / dpr, c.height / dpr);
+    }
     drawWriteGuide();
   });
 
+  // So khớp nét bé viết với chữ mẫu để chấm điểm.
+  // - độ phủ (coverage): tô được bao nhiêu phần của chữ mẫu
+  // - độ chính xác (precision): nét bé viết có nằm trên chữ không (chống tô bừa)
+  function evaluateWriting(){
+    const pass = { stars:3, pts:10, advance:true, face:'🌟', txt:'Viết đẹp quá!', speak:'Con viết đẹp quá, giỏi lắm!' };
+    const none = { stars:0, pts:0, advance:false, face:'✍️', txt:'Bé hãy tô theo nét chữ nhé!', speak:'Con hãy tô theo nét chữ mờ nhé!' };
+    if(!inkCtx || !maskCtx) return pass;
+
+    const cw = els.writeCanvas.width, ch = els.writeCanvas.height;
+    let inkData, maskData;
+    try{
+      inkData = inkCtx.getImageData(0, 0, cw, ch).data;
+      maskData = maskCtx.getImageData(0, 0, cw, ch).data;
+    }catch(e){ return pass; }
+
+    const GRID = 26;
+    const cellW = cw / GRID, cellH = ch / GRID;
+    const target = new Array(GRID * GRID).fill(0);
+    const ink = new Array(GRID * GRID).fill(0);
+    for(let y = 0; y < ch; y += 2){
+      const cy = Math.min(GRID - 1, (y / cellH) | 0);
+      const row = y * cw;
+      for(let x = 0; x < cw; x += 2){
+        const a = (row + x) * 4 + 3;
+        const cell = cy * GRID + Math.min(GRID - 1, (x / cellW) | 0);
+        if(maskData[a] > 40) target[cell]++;
+        if(inkData[a] > 40) ink[cell]++;
+      }
+    }
+    let targetCells = 0, inkCells = 0, hitCells = 0, inkTotal = 0;
+    for(let i = 0; i < target.length; i++){
+      const t = target[i] > 1, k = ink[i] > 1;
+      if(t) targetCells++;
+      if(k){ inkCells++; inkTotal += ink[i]; }
+      if(t && k) hitCells++;
+    }
+    // Không đọc được chữ mẫu (font chưa tải) → không chấm gắt, cho qua.
+    if(targetCells < 4) return pass;
+    // Bé chưa vẽ gì đáng kể.
+    if(inkCells < 3 || inkTotal < 12) return none;
+
+    const coverage = hitCells / targetCells;
+    const precision = hitCells / inkCells;
+
+    if(coverage >= 0.62 && precision >= 0.45)
+      return { stars:3, pts:10, advance:true, face:'🌟', txt:'Viết đẹp quá!', speak:'Con viết đẹp quá, giỏi lắm!' };
+    if(coverage >= 0.40 && precision >= 0.32)
+      return { stars:2, pts:6, advance:true, face:'😊', txt:'Giỏi lắm, gần đúng rồi!', speak:'Giỏi lắm, con viết gần đúng rồi!' };
+    if(coverage >= 0.20)
+      return { stars:1, pts:3, advance:true, face:'🙂', txt:'Cố lên, tô kỹ hơn nhé!', speak:'Con tô kỹ hơn theo nét chữ nhé!' };
+    return { stars:0, pts:0, advance:false, face:'✍️', txt:'Bé tô lại theo nét chữ mờ nhé!', speak:'Con tô lại theo nét chữ mờ nhé!' };
+  }
+
+  function showWriteResult(info){
+    const card = document.createElement('div');
+    card.className = 'feedback-card show';
+    const stars = info.stars > 0 ? `<div class="write-stars">${'⭐'.repeat(info.stars)}</div>` : '';
+    card.innerHTML = `<div class="face">${info.face}</div><div class="txt">${info.txt}</div>${stars}`;
+    els.feedback.innerHTML = '';
+    els.feedback.appendChild(card);
+    setTimeout(() => { els.feedback.innerHTML = ''; }, 1300);
+  }
+
   els.writeDoneBtn.addEventListener('click', () => {
-    state.score += 10;
-    els.scoreVal.textContent = state.score;
-    playSound(true);
-    registerCorrect();
-    showFeedback(true);
-    launchConfetti();
-    speak('Con viết đẹp quá, giỏi lắm!');
-    state.write.index++;
-    setTimeout(() => renderRound(true), 700);
+    const info = evaluateWriting();
+    showWriteResult(info);
+    if(info.pts > 0){
+      state.score += info.pts;
+      els.scoreVal.textContent = state.score;
+      playSound(true);
+      registerCorrect();
+      if(info.stars >= 2) launchConfetti();
+    } else {
+      playSound(false);
+    }
+    speak(info.speak);
+    if(info.advance){
+      state.write.index++;
+      setTimeout(() => renderRound(true), 1100);
+    }
   });
 
   els.writeToggleAbc.addEventListener('click', () => {
