@@ -485,7 +485,7 @@
   <div class="game-card">
     <div class="instruction-box">
       <div class="mascot">🐰</div>
-      <div class="instruction-text" id="instructionText">Con hãy tìm chữ <b id="targetInline">A</b> nhé!</div>
+      <div class="instruction-text" id="instructionText">Con hãy tìm chữ <b>A</b> nhé!</div>
       <button class="speak-btn" id="speakBtn" title="Nghe lại đề bài">🔊</button>
     </div>
 
@@ -630,7 +630,6 @@
     instructionText: document.getElementById('instructionText'),
     targetDisplayBox: document.getElementById('targetDisplayBox'),
     targetLabel: document.getElementById('targetLabel'),
-    targetInline: document.getElementById('targetInline'),
     targetBig: document.getElementById('targetBig'),
     objectsRow: document.getElementById('objectsRow'),
     wordSlots: document.getElementById('wordSlots'),
@@ -901,7 +900,7 @@
     if(state.mode === 'math'){
       const q = state.mathQuestion;
       if(q.type === 'count') return `Con hãy đếm xem có bao nhiêu ${q.itemName} nhé!`;
-      if(q.type === 'compare') return `Con hãy so sánh xem ${q.a} và ${q.b}, số nào lớn hơn nhé!`;
+      if(q.type === 'compare') return `Con hãy chọn dấu đúng cho ${q.a} và ${q.b} nhé!`;
       if(q.type === 'add') return `Con hãy tính ${q.a} cộng ${q.b} bằng mấy nhé!`;
       if(q.type === 'sub') return `Con hãy tính ${q.a} trừ ${q.b} bằng mấy nhé!`;
     }
@@ -983,7 +982,7 @@
       els.targetBig.style.display = 'block';
       els.targetLabel.textContent = 'Con đang tìm';
       els.targetBig.textContent = state.target.display;
-      els.instructionText.innerHTML = `Con hãy tìm ${state.mode === 'abc' ? 'chữ' : 'số'} <b id="targetInline">${state.target.display}</b> nhé!`;
+      els.instructionText.innerHTML = `Con hãy tìm ${state.mode === 'abc' ? 'chữ' : 'số'} <b>${state.target.display}</b> nhé!`;
     }
   }
 
@@ -1111,6 +1110,7 @@
     } else {
       btn.classList.add('wrong-shake');
       setTimeout(() => btn.classList.remove('wrong-shake'), 400);
+      showFeedback(false);
       speak('Chưa đúng, con thử lại nhé!');
     }
   }
@@ -1260,11 +1260,13 @@
   let writeLastX = 0, writeLastY = 0;
   let writePenColor = TILE_COLORS[0];
   let writePenWidth = 8;
+  let lastWriteWrapWidth = 0;
   const WRITE_GUIDE_FONT = 'Playwrite VN Guides';
 
   function setupWriteCanvas(){
     const canvas = els.writeCanvas;
     const wrap = canvas.parentElement;
+    lastWriteWrapWidth = wrap.clientWidth;
     const size = Math.max(160, wrap.clientWidth - 16);
     const dpr = window.devicePixelRatio || 1;
     canvas.width = size * dpr;
@@ -1484,7 +1486,12 @@
   });
 
   window.addEventListener('resize', () => {
-    if(state.mode === 'write') setupWriteCanvas();
+    if(state.mode !== 'write') return;
+    // Chỉ dựng lại khung khi bề ngang thật sự thay đổi (ví dụ xoay ngang máy).
+    // Bỏ qua thay đổi chỉ về chiều cao — như khi thanh địa chỉ trên điện thoại
+    // ẩn/hiện lúc bé đang tô — để không xoá mất nét bé vừa viết.
+    if(Math.abs(els.writeCanvas.parentElement.clientWidth - lastWriteWrapWidth) < 2) return;
+    setupWriteCanvas();
   });
 
   function selectMode(mode){
