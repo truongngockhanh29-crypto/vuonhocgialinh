@@ -469,6 +469,59 @@
   }
   .stats-reset:active{transform:translateY(3px);box-shadow:none;}
 
+  /* ---------- MỤC TIÊU & HUY HIỆU ---------- */
+  .goal-card{
+    background:var(--white);
+    border-radius:20px;
+    padding:12px 16px 14px;
+    margin-top:14px;
+    box-shadow:0 6px 0 #e4d9c2;
+  }
+  .goal-top{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    font-size:13px;font-weight:700;color:var(--plum);
+    margin-bottom:9px;
+  }
+  .goal-top b{color:var(--coral);}
+  .goal-streak{color:#E8642F;white-space:nowrap;}
+  .goal-bar-row{display:flex;align-items:center;gap:10px;}
+  .goal-bar{
+    flex:1;height:16px;border-radius:999px;background:#EFE6D0;overflow:hidden;
+  }
+  .goal-bar-fill{
+    height:100%;width:0%;border-radius:999px;
+    background:linear-gradient(90deg,var(--grass),var(--sky));
+    transition:width .5s ease;
+  }
+  .goal-next{font-size:26px;flex-shrink:0;line-height:1;}
+  .goal-next.earned{animation:pop .6s;}
+  .goal-label{
+    font-size:12px;font-weight:600;color:#7a6d92;margin-top:9px;text-align:center;
+  }
+  .goal-label b{color:var(--coral);}
+
+  .badges-toggle{
+    display:block;margin:12px auto 0;border:none;background:var(--white);
+    color:var(--plum);font-family:'Quicksand';font-weight:700;font-size:13px;
+    padding:9px 18px;border-radius:999px;box-shadow:0 4px 0 #e4d9c2;cursor:pointer;
+  }
+  .badges-toggle:active{transform:translateY(3px);box-shadow:none;}
+  .badges-panel{
+    background:var(--white);border-radius:20px;padding:14px;margin-top:12px;
+    box-shadow:0 6px 0 #e4d9c2;
+  }
+  .badges-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .badge-item{
+    background:var(--cream);border-radius:16px;padding:12px 6px;text-align:center;
+    opacity:0.5;
+  }
+  .badge-item.earned{opacity:1;background:#E9FBEF;}
+  .badge-emoji{font-size:32px;line-height:1;}
+  .badge-name{font-family:'Baloo 2',cursive;font-weight:700;font-size:12px;color:var(--plum);margin-top:5px;line-height:1.15;}
+  .badge-req{font-size:11px;color:#9a8fb0;font-weight:600;margin-top:2px;}
+  .badge-item.earned .badge-req{color:var(--grass);}
+  .feedback-card .badge-sub{font-size:16px;color:var(--coral);margin-top:2px;font-weight:700;}
+
   @media (prefers-reduced-motion: reduce){
     *{animation:none !important;transition:none !important;}
   }
@@ -516,6 +569,18 @@
     <button class="level-btn active" data-level="1">Dễ</button>
     <button class="level-btn" data-level="2">Vừa</button>
     <button class="level-btn" data-level="3">Khó</button>
+  </div>
+
+  <div class="goal-card" id="goalCard">
+    <div class="goal-top">
+      <span class="goal-daily" id="goalDaily">🎯 Hôm nay: <b>0/10</b> câu đúng</span>
+      <span class="goal-streak" id="goalStreak" style="display:none;"></span>
+    </div>
+    <div class="goal-bar-row">
+      <div class="goal-bar"><div class="goal-bar-fill" id="goalBarFill"></div></div>
+      <div class="goal-next" id="goalNext">🌟</div>
+    </div>
+    <div class="goal-label" id="goalLabel"></div>
   </div>
 
   <div class="game-card">
@@ -582,6 +647,11 @@
     <button class="stats-reset" id="statsReset">🧹 Xoá điểm &amp; thời gian</button>
   </div>
 
+  <button class="badges-toggle" id="badgesToggle">🏅 Huy hiệu của bé</button>
+  <div class="badges-panel" id="badgesPanel" style="display:none;">
+    <div class="badges-grid" id="badgesGrid"></div>
+  </div>
+
   <footer>Chạm vào ô đúng để ghi điểm nhé! 🌟</footer>
 </div>
 
@@ -645,6 +715,17 @@
 
   const NUMBERS_LIST = ['0','1','2','3','4','5','6','7','8','9'];
 
+  // Các mốc huy hiệu theo tổng số câu trả lời đúng (bé sưu tập dần, không mất đi)
+  const BADGES = [
+    { at: 5,   emoji: '🌟', name: 'Ngôi sao nhỏ' },
+    { at: 15,  emoji: '🏅', name: 'Huy chương đồng' },
+    { at: 30,  emoji: '🥈', name: 'Huy chương bạc' },
+    { at: 50,  emoji: '🥇', name: 'Huy chương vàng' },
+    { at: 80,  emoji: '🏆', name: 'Cúp vô địch' },
+    { at: 120, emoji: '👑', name: 'Nhà vô địch nhí' },
+  ];
+  const DAILY_GOAL = 10; // số câu đúng cần đạt trong ngày
+
   const state = {
     mode: 'abc', // 'abc' | 'num' | 'math' | 'word' | 'memory' | 'write'
     level: 1,
@@ -655,7 +736,11 @@
     wordQuestion: null,
     wordIndex: 0,
     memory: null,
-    write: { source: 'abc', index: 0, case: 'upper' }
+    write: { source: 'abc', index: 0, case: 'upper' },
+    correctCount: 0,          // tổng số câu đúng (để mở huy hiệu)
+    daily: null,              // { date, correct, goalReached }
+    streak: 0,                // số ngày liên tiếp đạt mục tiêu
+    lastGoalDate: null        // ngày gần nhất đạt mục tiêu (YYYY-MM-DD)
   };
 
   const els = {
@@ -694,6 +779,14 @@
     statsToggle: document.getElementById('statsToggle'),
     statsPanel: document.getElementById('statsPanel'),
     statsReset: document.getElementById('statsReset'),
+    goalDaily: document.getElementById('goalDaily'),
+    goalStreak: document.getElementById('goalStreak'),
+    goalBarFill: document.getElementById('goalBarFill'),
+    goalNext: document.getElementById('goalNext'),
+    goalLabel: document.getElementById('goalLabel'),
+    badgesToggle: document.getElementById('badgesToggle'),
+    badgesPanel: document.getElementById('badgesPanel'),
+    badgesGrid: document.getElementById('badgesGrid'),
     statTotal: document.getElementById('statTotal'),
     statAbc: document.getElementById('statAbc'),
     statNum: document.getElementById('statNum'),
@@ -940,7 +1033,11 @@
         score: state.score,
         level: state.level,
         mode: state.mode,
-        timeStats: timeStats
+        timeStats: timeStats,
+        correctCount: state.correctCount,
+        daily: state.daily,
+        streak: state.streak,
+        lastGoalDate: state.lastGoalDate
       }));
     }catch(e){ /* localStorage có thể bị chặn (chế độ ẩn danh) — bỏ qua */ }
   }
@@ -960,7 +1057,156 @@
           }
         });
       }
+      if(typeof data.correctCount === 'number' && data.correctCount >= 0) state.correctCount = data.correctCount;
+      if(data.daily && typeof data.daily === 'object' && typeof data.daily.date === 'string'){
+        state.daily = {
+          date: data.daily.date,
+          correct: typeof data.daily.correct === 'number' ? data.daily.correct : 0,
+          goalReached: !!data.daily.goalReached
+        };
+      }
+      if(typeof data.streak === 'number' && data.streak >= 0) state.streak = data.streak;
+      if(typeof data.lastGoalDate === 'string') state.lastGoalDate = data.lastGoalDate;
     }catch(e){ /* dữ liệu hỏng — bỏ qua, chơi lại từ đầu */ }
+  }
+
+  // ---------- MỤC TIÊU MỖI BUỔI HỌC & HUY HIỆU ----------
+  function dateStr(d){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function todayStr(){ return dateStr(new Date()); }
+  function yesterdayStr(){
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return dateStr(d);
+  }
+
+  // Đảm bảo bộ đếm "hôm nay" đúng ngày; sang ngày mới thì đặt lại về 0.
+  function ensureDaily(){
+    const t = todayStr();
+    if(!state.daily || state.daily.date !== t){
+      state.daily = { date: t, correct: 0, goalReached: false };
+    }
+  }
+
+  function bumpStreak(){
+    const t = todayStr();
+    if(state.lastGoalDate === t) return;               // đã tính chuỗi cho hôm nay
+    state.streak = (state.lastGoalDate === yesterdayStr()) ? state.streak + 1 : 1;
+    state.lastGoalDate = t;
+  }
+
+  function streakAlive(){
+    return state.streak > 0 && (state.lastGoalDate === todayStr() || state.lastGoalDate === yesterdayStr());
+  }
+
+  // Gọi mỗi khi bé hoàn thành đúng một câu/nhiệm vụ.
+  function registerCorrect(){
+    ensureDaily();
+    const prevCount = state.correctCount;
+    state.correctCount++;
+    state.daily.correct++;
+
+    const newBadge = BADGES.find(b => b.at > prevCount && b.at <= state.correctCount);
+
+    let dailyJustReached = false;
+    if(!state.daily.goalReached && state.daily.correct >= DAILY_GOAL){
+      state.daily.goalReached = true;
+      dailyJustReached = true;
+      bumpStreak();
+    }
+
+    updateGoalUI();
+    if(els.badgesPanel.style.display !== 'none') renderBadges();
+    saveProgress();
+
+    // Ăn mừng sau khi lời khen của câu vừa rồi hiện xong (~0.75s).
+    if(newBadge){
+      setTimeout(() => showBadgeUnlocked(newBadge), 750);
+    } else if(dailyJustReached){
+      setTimeout(() => showDailyDone(), 750);
+    }
+  }
+
+  function updateGoalUI(){
+    ensureDaily();
+
+    els.goalDaily.innerHTML = state.daily.goalReached
+      ? `🎉 Hôm nay bé đã đạt mục tiêu <b>${DAILY_GOAL}</b> câu!`
+      : `🎯 Hôm nay: <b>${state.daily.correct}/${DAILY_GOAL}</b> câu đúng`;
+
+    if(streakAlive()){
+      els.goalStreak.style.display = 'inline';
+      els.goalStreak.innerHTML = `🔥 <b>${state.streak}</b> ngày`;
+    } else {
+      els.goalStreak.style.display = 'none';
+    }
+
+    const next = BADGES.find(b => b.at > state.correctCount);
+    if(next){
+      const prev = BADGES.filter(b => b.at <= state.correctCount).pop();
+      const base = prev ? prev.at : 0;
+      const pct = Math.max(0, Math.min(100, ((state.correctCount - base) / (next.at - base)) * 100));
+      els.goalBarFill.style.width = pct + '%';
+      els.goalNext.textContent = next.emoji;
+      els.goalNext.classList.remove('earned');
+      const remain = next.at - state.correctCount;
+      els.goalLabel.innerHTML = `Còn <b>${remain}</b> câu đúng nữa để mở ${next.emoji} <b>${next.name}</b>!`;
+    } else {
+      els.goalBarFill.style.width = '100%';
+      els.goalNext.textContent = '👑';
+      els.goalNext.classList.add('earned');
+      els.goalLabel.innerHTML = `Bé đã mở hết tất cả huy hiệu, siêu giỏi! 🎉`;
+    }
+
+    const earned = BADGES.filter(b => state.correctCount >= b.at).length;
+    els.badgesToggle.textContent = `🏅 Huy hiệu của bé (${earned}/${BADGES.length})`;
+  }
+
+  function renderBadges(){
+    els.badgesGrid.innerHTML = '';
+    BADGES.forEach(b => {
+      const earned = state.correctCount >= b.at;
+      const item = document.createElement('div');
+      item.className = 'badge-item' + (earned ? ' earned' : '');
+      const emoji = document.createElement('div');
+      emoji.className = 'badge-emoji';
+      emoji.textContent = earned ? b.emoji : '🔒';
+      const name = document.createElement('div');
+      name.className = 'badge-name';
+      name.textContent = b.name;
+      const req = document.createElement('div');
+      req.className = 'badge-req';
+      req.textContent = earned ? 'Đã mở' : (b.at + ' câu đúng');
+      item.appendChild(emoji);
+      item.appendChild(name);
+      item.appendChild(req);
+      els.badgesGrid.appendChild(item);
+    });
+  }
+
+  function showBadgeUnlocked(badge){
+    const card = document.createElement('div');
+    card.className = 'feedback-card show';
+    card.innerHTML = `<div class="face">${badge.emoji}</div><div class="txt">Huy hiệu mới!</div><div class="badge-sub">${badge.name}</div>`;
+    els.feedback.innerHTML = '';
+    els.feedback.appendChild(card);
+    launchConfetti();
+    playSound(true);
+    speak(`Tuyệt vời! Bé nhận được huy hiệu ${badge.name}!`);
+    setTimeout(() => { els.feedback.innerHTML = ''; }, 2000);
+  }
+
+  function showDailyDone(){
+    const card = document.createElement('div');
+    card.className = 'feedback-card show';
+    card.innerHTML = `<div class="face">🎯</div><div class="txt">Đạt mục tiêu hôm nay!</div><div class="badge-sub">${DAILY_GOAL} câu đúng 🎉</div>`;
+    els.feedback.innerHTML = '';
+    els.feedback.appendChild(card);
+    launchConfetti();
+    playSound(true);
+    speak('Hoan hô! Bé đã đạt mục tiêu hôm nay rồi!');
+    setTimeout(() => { els.feedback.innerHTML = ''; }, 2000);
   }
 
   function flushCurrentModeTime(){
@@ -1031,6 +1277,12 @@
     modeStartTime = Date.now();
     saveProgress();
     renderStatsPanel();
+  });
+
+  els.badgesToggle.addEventListener('click', () => {
+    const isHidden = els.badgesPanel.style.display === 'none';
+    els.badgesPanel.style.display = isHidden ? 'block' : 'none';
+    if(isHidden) renderBadges();
   });
 
   function currentInstructionText(){
@@ -1214,8 +1466,8 @@
       btn.classList.add('correct-pop');
       state.score += 10;
       els.scoreVal.textContent = state.score;
-      saveProgress();
       playSound(true);
+      registerCorrect();
       showFeedback(true);
       launchConfetti();
       speak('Giỏi quá! Con tìm đúng rồi!');
@@ -1244,6 +1496,7 @@
       playSound(true);
       updateWordSlots();
       if(state.wordIndex === q.word.length){
+        registerCorrect();
         showFeedback(true);
         launchConfetti();
         speak(`Giỏi quá! Con đã ghép xong chữ ${q.word} rồi!`);
@@ -1302,8 +1555,8 @@
       m.matchedCount++;
       state.score += 10;
       els.scoreVal.textContent = state.score;
-      saveProgress();
       playSound(true);
+      registerCorrect();
       speak('Giỏi quá! Đúng một cặp rồi!');
       m.firstIndex = null;
       m.secondIndex = null;
@@ -1586,8 +1839,8 @@
   els.writeDoneBtn.addEventListener('click', () => {
     state.score += 10;
     els.scoreVal.textContent = state.score;
-    saveProgress();
     playSound(true);
+    registerCorrect();
     showFeedback(true);
     launchConfetti();
     speak('Con viết đẹp quá, giỏi lắm!');
@@ -1688,6 +1941,7 @@
 
   loadProgress();
   applyRestoredState();
+  updateGoalUI();
   renderRound(false);
 })();
 </script>
