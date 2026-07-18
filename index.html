@@ -432,6 +432,19 @@
     font-weight:800;
   }
   .stat-row.stat-total b{color:var(--sky-deep);}
+  .stats-reset{
+    display:block;
+    margin:14px auto 2px;
+    border:none;
+    background:var(--coral);
+    color:#fff;
+    font-family:'Baloo 2',cursive;font-weight:700;font-size:13px;
+    padding:9px 18px;
+    border-radius:999px;
+    box-shadow:0 4px 0 #d15e3a;
+    cursor:pointer;
+  }
+  .stats-reset:active{transform:translateY(3px);box-shadow:none;}
 
   @media (prefers-reduced-motion: reduce){
     *{animation:none !important;transition:none !important;}
@@ -541,6 +554,7 @@
     <div class="stat-row"><span>🔡 Ghép chữ</span><b id="statWord">0:00</b></div>
     <div class="stat-row"><span>🃏 Ghép cặp</span><b id="statMemory">0:00</b></div>
     <div class="stat-row"><span>✍️ Tập viết</span><b id="statWrite">0:00</b></div>
+    <button class="stats-reset" id="statsReset">🧹 Xoá điểm &amp; thời gian</button>
   </div>
 
   <footer>Chạm vào ô đúng để ghi điểm nhé! 🌟</footer>
@@ -654,6 +668,7 @@
     feedback: document.getElementById('feedback'),
     statsToggle: document.getElementById('statsToggle'),
     statsPanel: document.getElementById('statsPanel'),
+    statsReset: document.getElementById('statsReset'),
     statTotal: document.getElementById('statTotal'),
     statAbc: document.getElementById('statAbc'),
     statNum: document.getElementById('statNum'),
@@ -828,9 +843,55 @@
     if(warn) warn.style.display = 'block';
   }
 
+  // ---------- ÂM THANH PHẢN HỒI ----------
+  // Tạo tiếng "ting" (đúng) và "boop" (sai) bằng Web Audio API, không cần tải
+  // file âm thanh. Hữu ích khi máy không đọc được giọng nói (Zalo/Messenger…).
+  let audioCtx = null;
+  function ensureAudio(){
+    if(audioCtx) return audioCtx;
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(AC) audioCtx = new AC();
+    }catch(e){ audioCtx = null; }
+    return audioCtx;
+  }
+  function playSound(correct){
+    const ctx = ensureAudio();
+    if(!ctx) return;
+    if(ctx.state === 'suspended'){ try{ ctx.resume(); }catch(e){} }
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    if(correct){
+      // ba nốt đi lên, vui tai
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(660, now);
+      osc.frequency.setValueAtTime(880, now + 0.09);
+      osc.frequency.setValueAtTime(1175, now + 0.18);
+    } else {
+      // một nốt trầm đi xuống, nhẹ nhàng báo sai
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(170, now + 0.22);
+    }
+    const dur = correct ? 0.30 : 0.26;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.2, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.start(now);
+    osc.stop(now + dur + 0.02);
+  }
+  function unlockAudio(){
+    const ctx = ensureAudio();
+    if(ctx && ctx.state === 'suspended'){ try{ ctx.resume(); }catch(e){} }
+  }
+
   // Một số điện thoại (đặc biệt là trình duyệt trong Zalo/Messenger/TikTok)
-  // chỉ cho phép phát giọng nói sau khi có thao tác chạm đầu tiên của người dùng.
+  // chỉ cho phép phát âm thanh/giọng nói sau khi có thao tác chạm đầu tiên.
   function unlockTts(){
+    unlockAudio();
     if(ttsUnlocked || !('speechSynthesis' in window)) return;
     ttsUnlocked = true;
     const primer = new SpeechSynthesisUtterance(' ');
@@ -845,6 +906,38 @@
   let modeStartTime = Date.now();
   let isPageVisible = !document.hidden;
 
+  // ---------- LƯU TIẾN ĐỘ (điểm, thời gian, chế độ) ----------
+  const STORAGE_KEY = 'beVuiHoc_v1';
+
+  function saveProgress(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        score: state.score,
+        level: state.level,
+        mode: state.mode,
+        timeStats: timeStats
+      }));
+    }catch(e){ /* localStorage có thể bị chặn (chế độ ẩn danh) — bỏ qua */ }
+  }
+
+  function loadProgress(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      const data = JSON.parse(raw);
+      if(typeof data.score === 'number' && data.score >= 0) state.score = data.score;
+      if([1, 2, 3].includes(data.level)) state.level = data.level;
+      if(['abc','num','math','word','memory','write'].includes(data.mode)) state.mode = data.mode;
+      if(data.timeStats){
+        Object.keys(timeStats).forEach(k => {
+          if(typeof data.timeStats[k] === 'number' && data.timeStats[k] >= 0){
+            timeStats[k] = data.timeStats[k];
+          }
+        });
+      }
+    }catch(e){ /* dữ liệu hỏng — bỏ qua, chơi lại từ đầu */ }
+  }
+
   function flushCurrentModeTime(){
     if(!isPageVisible) return;
     const now = Date.now();
@@ -856,10 +949,16 @@
     if(document.hidden){
       flushCurrentModeTime();
       isPageVisible = false;
+      saveProgress();
     } else {
       isPageVisible = true;
       modeStartTime = Date.now();
     }
+  });
+  // pagehide đáng tin cậy hơn beforeunload trên điện thoại khi đóng/chuyển tab.
+  window.addEventListener('pagehide', () => {
+    flushCurrentModeTime();
+    saveProgress();
   });
 
   function formatDuration(ms){
@@ -880,11 +979,14 @@
     els.statWrite.textContent = formatDuration(timeStats.write);
   }
 
+  let saveTick = 0;
   setInterval(() => {
     flushCurrentModeTime();
     if(els.statsPanel.style.display !== 'none'){
       renderStatsPanel();
     }
+    // lưu thời gian chơi định kỳ (mỗi 5 giây) để không mất nếu tab bị đóng đột ngột
+    if(++saveTick % 5 === 0) saveProgress();
   }, 1000);
 
   els.statsToggle.addEventListener('click', () => {
@@ -894,6 +996,16 @@
       flushCurrentModeTime();
       renderStatsPanel();
     }
+  });
+
+  els.statsReset.addEventListener('click', () => {
+    if(!window.confirm('Xoá hết điểm và thời gian chơi của bé?')) return;
+    state.score = 0;
+    els.scoreVal.textContent = '0';
+    Object.keys(timeStats).forEach(k => { timeStats[k] = 0; });
+    modeStartTime = Date.now();
+    saveProgress();
+    renderStatsPanel();
   });
 
   function currentInstructionText(){
@@ -1077,6 +1189,8 @@
       btn.classList.add('correct-pop');
       state.score += 10;
       els.scoreVal.textContent = state.score;
+      saveProgress();
+      playSound(true);
       showFeedback(true);
       launchConfetti();
       speak('Giỏi quá! Con tìm đúng rồi!');
@@ -1084,6 +1198,7 @@
     } else {
       btn.classList.add('wrong-shake');
       setTimeout(() => btn.classList.remove('wrong-shake'), 400);
+      playSound(false);
       showFeedback(false);
       speak('Chưa đúng, con thử lại nhé!');
     }
@@ -1100,6 +1215,8 @@
       state.wordIndex++;
       state.score += 5;
       els.scoreVal.textContent = state.score;
+      saveProgress();
+      playSound(true);
       updateWordSlots();
       if(state.wordIndex === q.word.length){
         showFeedback(true);
@@ -1110,6 +1227,7 @@
     } else {
       btn.classList.add('wrong-shake');
       setTimeout(() => btn.classList.remove('wrong-shake'), 400);
+      playSound(false);
       showFeedback(false);
       speak('Chưa đúng, con thử lại nhé!');
     }
@@ -1159,6 +1277,8 @@
       m.matchedCount++;
       state.score += 10;
       els.scoreVal.textContent = state.score;
+      saveProgress();
+      playSound(true);
       speak('Giỏi quá! Đúng một cặp rồi!');
       m.firstIndex = null;
       m.secondIndex = null;
@@ -1172,6 +1292,7 @@
         setTimeout(() => renderRound(true), 1400);
       }
     } else {
+      playSound(false);
       speak('Chưa đúng, con thử lại nhé!');
       setTimeout(() => {
         first.flipped = false;
@@ -1440,6 +1561,8 @@
   els.writeDoneBtn.addEventListener('click', () => {
     state.score += 10;
     els.scoreVal.textContent = state.score;
+    saveProgress();
+    playSound(true);
     showFeedback(true);
     launchConfetti();
     speak('Con viết đẹp quá, giỏi lắm!');
@@ -1504,6 +1627,7 @@
     els.modeMemory.classList.toggle('selected', mode === 'memory');
     els.modeWrite.classList.toggle('selected', mode === 'write');
     if(mode !== 'write') els.writePicker.style.display = 'none';
+    saveProgress();
     renderRound(true);
   }
 
@@ -1519,11 +1643,26 @@
       els.levelBtns.forEach(x => x.classList.remove('active'));
       b.classList.add('active');
       state.level = Number(b.dataset.level);
+      saveProgress();
       renderRound(true);
     });
   });
   els.speakBtn.addEventListener('click', () => speak(currentInstructionText()));
 
+  // Khôi phục điểm, thời gian, chế độ & cấp độ đã lưu (nếu có) lên giao diện.
+  function applyRestoredState(){
+    els.scoreVal.textContent = state.score;
+    const modeBtns = {
+      abc: els.modeAbc, num: els.modeNum, math: els.modeMath,
+      word: els.modeWord, memory: els.modeMemory, write: els.modeWrite
+    };
+    Object.values(modeBtns).forEach(b => b.classList.remove('selected'));
+    (modeBtns[state.mode] || els.modeAbc).classList.add('selected');
+    els.levelBtns.forEach(b => b.classList.toggle('active', Number(b.dataset.level) === state.level));
+  }
+
+  loadProgress();
+  applyRestoredState();
   renderRound(false);
 })();
 </script>
