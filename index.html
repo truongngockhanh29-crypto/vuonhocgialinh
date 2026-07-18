@@ -114,6 +114,7 @@
   .mode-card.word{border-bottom:6px solid #B388EB;}
   .mode-card.memory{border-bottom:6px solid #FF6FA0;}
   .mode-card.write{border-bottom:6px solid var(--sun);}
+  .mode-card.listen{border-bottom:6px solid #4DD0C4;}
   .mode-card.selected{outline:4px solid var(--sun);}
 
   .level-row{
@@ -544,6 +545,10 @@
       <span class="ico">🔤</span>
       Tìm Chữ Cái
     </button>
+    <button class="mode-card listen" id="modeListen">
+      <span class="ico">👂</span>
+      Nghe Âm
+    </button>
     <button class="mode-card num" id="modeNum">
       <span class="ico">🔢</span>
       Tìm Con Số
@@ -640,6 +645,7 @@
   <div class="stats-panel" id="statsPanel" style="display:none;">
     <div class="stat-row stat-total"><span>🕒 Tổng thời gian trên trang</span><b id="statTotal">0:00</b></div>
     <div class="stat-row"><span>🔤 Tìm chữ cái</span><b id="statAbc">0:00</b></div>
+    <div class="stat-row"><span>👂 Nghe âm</span><b id="statListen">0:00</b></div>
     <div class="stat-row"><span>🔢 Tìm con số</span><b id="statNum">0:00</b></div>
     <div class="stat-row"><span>🧮 Đố vui toán</span><b id="statMath">0:00</b></div>
     <div class="stat-row"><span>🔡 Ghép chữ</span><b id="statWord">0:00</b></div>
@@ -716,6 +722,15 @@
 
   const NUMBERS_LIST = ['0','1','2','3','4','5','6','7','8','9'];
 
+  // Âm (phonics) của từng chữ để đọc trong trò "Nghe âm chọn chữ".
+  // Lưu ý: C/K cùng âm "cờ", I/Y cùng âm "i" — sẽ không cho xuất hiện chung một lượt.
+  const LISTEN_SOUNDS = {
+    'A':'a','Ă':'á','Â':'ớ','B':'bờ','C':'cờ','D':'dờ','Đ':'đờ','E':'e','Ê':'ê',
+    'G':'gờ','H':'hờ','I':'i','K':'cờ','L':'lờ','M':'mờ','N':'nờ','O':'o','Ô':'ô',
+    'Ơ':'ơ','P':'pờ','Q':'quờ','R':'rờ','S':'sờ','T':'tờ','U':'u','Ư':'ư','V':'vờ',
+    'X':'xờ','Y':'i'
+  };
+
   // Các mốc huy hiệu theo tổng số câu trả lời đúng (bé sưu tập dần, không mất đi)
   const BADGES = [
     { at: 5,   emoji: '🌟', name: 'Ngôi sao nhỏ' },
@@ -728,7 +743,7 @@
   const DAILY_GOAL = 10; // số câu đúng cần đạt trong ngày
 
   const state = {
-    mode: 'abc', // 'abc' | 'num' | 'math' | 'word' | 'memory' | 'write'
+    mode: 'abc', // 'abc' | 'listen' | 'num' | 'math' | 'word' | 'memory' | 'write'
     level: 1,
     score: 0,
     target: null,
@@ -746,6 +761,7 @@
 
   const els = {
     modeAbc: document.getElementById('modeAbc'),
+    modeListen: document.getElementById('modeListen'),
     modeNum: document.getElementById('modeNum'),
     modeMath: document.getElementById('modeMath'),
     modeWord: document.getElementById('modeWord'),
@@ -790,6 +806,7 @@
     badgesGrid: document.getElementById('badgesGrid'),
     statTotal: document.getElementById('statTotal'),
     statAbc: document.getElementById('statAbc'),
+    statListen: document.getElementById('statListen'),
     statNum: document.getElementById('statNum'),
     statMath: document.getElementById('statMath'),
     statWord: document.getElementById('statWord'),
@@ -827,6 +844,23 @@
       }
       return shuffle(Array.from(set)).map(n => ({ key: 'N' + n, display: String(n), base: n }));
     }
+  }
+
+  function listenSoundFor(letter){
+    return LISTEN_SOUNDS[letter] || letter.toLowerCase();
+  }
+
+  // Một lượt "Nghe âm": chọn 1 chữ mục tiêu, các chữ còn lại làm nhiễu nhưng
+  // không được trùng âm với mục tiêu (tránh có 2 đáp án đúng cho cùng một âm).
+  function buildListenRound(){
+    const count = tileCountForLevel();
+    const target = LETTERS[randInt(LETTERS.length)];
+    const targetSound = listenSoundFor(target);
+    const distractorPool = LETTERS.filter(l => l !== target && listenSoundFor(l) !== targetSound);
+    const distractors = shuffle(distractorPool).slice(0, count - 1);
+    const letters = shuffle([target, ...distractors]);
+    const tokens = letters.map(l => ({ key: 'L-' + l, display: l, base: l, sound: listenSoundFor(l) }));
+    return { tokens, target: tokens.find(t => t.base === target) };
   }
 
   function buildMathQuestion(){
@@ -1021,7 +1055,7 @@
   document.addEventListener('click', unlockTts, {once:true});
 
   // ---------- THEO DÕI THỜI GIAN CHƠI ----------
-  const timeStats = { abc: 0, num: 0, math: 0, word: 0, memory: 0, write: 0 };
+  const timeStats = { abc: 0, listen: 0, num: 0, math: 0, word: 0, memory: 0, write: 0 };
   let modeStartTime = Date.now();
   let isPageVisible = !document.hidden;
 
@@ -1050,7 +1084,7 @@
       const data = JSON.parse(raw);
       if(typeof data.score === 'number' && data.score >= 0) state.score = data.score;
       if([1, 2, 3].includes(data.level)) state.level = data.level;
-      if(['abc','num','math','word','memory','write'].includes(data.mode)) state.mode = data.mode;
+      if(['abc','listen','num','math','word','memory','write'].includes(data.mode)) state.mode = data.mode;
       if(data.timeStats){
         Object.keys(timeStats).forEach(k => {
           if(typeof data.timeStats[k] === 'number' && data.timeStats[k] >= 0){
@@ -1244,6 +1278,7 @@
     const total = Object.values(timeStats).reduce((a, b) => a + b, 0);
     els.statTotal.textContent = formatDuration(total);
     els.statAbc.textContent = formatDuration(timeStats.abc);
+    els.statListen.textContent = formatDuration(timeStats.listen);
     els.statNum.textContent = formatDuration(timeStats.num);
     els.statMath.textContent = formatDuration(timeStats.math);
     els.statWord.textContent = formatDuration(timeStats.word);
@@ -1300,6 +1335,9 @@
     }
     if(state.mode === 'memory'){
       return `Con hãy lật hai ô để tìm cặp giống nhau nhé!`;
+    }
+    if(state.mode === 'listen'){
+      return state.target.sound; // đọc đúng âm để bé nghe rồi chọn chữ
     }
     if(state.mode === 'write'){
       const label = writeLabelText();
@@ -1362,6 +1400,12 @@
       els.instructionText.innerHTML = `Đây là <b>${q.label}</b>. Con hãy ghép chữ cho đúng nhé!`;
     } else if(state.mode === 'memory'){
       els.instructionText.innerHTML = `Con hãy lật hai ô để tìm <b>cặp giống nhau</b> nhé!`;
+    } else if(state.mode === 'listen'){
+      els.objectsRow.style.display = 'none';
+      els.targetBig.style.display = 'block';
+      els.targetLabel.textContent = 'Nghe rồi chọn chữ';
+      els.targetBig.textContent = '👂';
+      els.instructionText.innerHTML = `Con hãy nghe âm rồi chọn chữ đúng nhé! Bấm <b>🔊</b> để nghe lại.`;
     } else if(state.mode === 'write'){
       els.writeCaseToggle.style.display = state.write.source === 'abc' ? 'flex' : 'none';
       const label = writeLabelText();
@@ -1404,6 +1448,10 @@
       pool = wordQuestion.tiles;
       target = null;
       state.wordIndex = 0;
+    } else if(state.mode === 'listen'){
+      const r = buildListenRound();
+      pool = r.tokens;
+      target = r.target;
     } else {
       pool = buildPool();
       target = pool[randInt(pool.length)];
@@ -1476,9 +1524,13 @@
     } else {
       btn.classList.add('wrong-shake');
       setTimeout(() => btn.classList.remove('wrong-shake'), 400);
-      playSound(false);
       showFeedback(false);
-      speak('Chưa đúng, con thử lại nhé!');
+      if(state.mode === 'listen'){
+        speak(state.target.sound); // cho bé nghe lại âm để thử lại
+      } else {
+        playSound(false);
+        speak('Chưa đúng, con thử lại nhé!');
+      }
     }
   }
 
@@ -2023,6 +2075,7 @@
     flushCurrentModeTime();
     state.mode = mode;
     els.modeAbc.classList.toggle('selected', mode === 'abc');
+    els.modeListen.classList.toggle('selected', mode === 'listen');
     els.modeNum.classList.toggle('selected', mode === 'num');
     els.modeMath.classList.toggle('selected', mode === 'math');
     els.modeWord.classList.toggle('selected', mode === 'word');
@@ -2034,6 +2087,7 @@
   }
 
   els.modeAbc.addEventListener('click', () => selectMode('abc'));
+  els.modeListen.addEventListener('click', () => selectMode('listen'));
   els.modeNum.addEventListener('click', () => selectMode('num'));
   els.modeMath.addEventListener('click', () => selectMode('math'));
   els.modeWord.addEventListener('click', () => selectMode('word'));
@@ -2055,7 +2109,7 @@
   function applyRestoredState(){
     els.scoreVal.textContent = state.score;
     const modeBtns = {
-      abc: els.modeAbc, num: els.modeNum, math: els.modeMath,
+      abc: els.modeAbc, listen: els.modeListen, num: els.modeNum, math: els.modeMath,
       word: els.modeWord, memory: els.modeMemory, write: els.modeWrite
     };
     Object.values(modeBtns).forEach(b => b.classList.remove('selected'));
