@@ -259,8 +259,6 @@
     background:#EFE6D0;color:var(--plum);cursor:pointer;
   }
   .write-toggle-btn.active{background:var(--sky-deep);color:#fff;}
-  .write-toggle-btn.case-btn.active{background:var(--coral);}
-  #writeCaseToggle{margin-top:-6px;}
   .write-nav{
     display:flex;align-items:center;justify-content:center;gap:10px;
     margin:10px 0 4px;
@@ -566,8 +564,8 @@
       Ghép Cặp
     </button>
     <button class="mode-card write" id="modeWrite">
-      <span class="ico">✍️</span>
-      Tập Viết
+      <span class="ico">✏️</span>
+      Nối Chữ
     </button>
   </div>
 
@@ -615,10 +613,6 @@
         <button class="write-toggle-btn active" id="writeToggleAbc">🔤 Chữ cái</button>
         <button class="write-toggle-btn" id="writeToggleNum">🔢 Con số</button>
       </div>
-      <div class="write-toggle" id="writeCaseToggle">
-        <button class="write-toggle-btn case-btn active" id="writeCaseUpper">Chữ HOA</button>
-        <button class="write-toggle-btn case-btn" id="writeCaseLower">chữ thường</button>
-      </div>
 
       <div class="write-nav">
         <button class="write-nav-btn" id="writePrevBtn" title="Chữ trước">◀</button>
@@ -631,10 +625,9 @@
         <canvas id="writeCanvas"></canvas>
       </div>
       <div class="write-example" id="writeExample" style="display:none;"></div>
-      <div class="write-hint">Tô theo nét chữ mờ rồi bấm “Xong rồi!” để cô chấm sao ⭐ cho bé nhé!</div>
+      <div class="write-hint">Nối các chấm theo thứ tự số 1 → 2 → 3… để tạo thành chữ nhé!</div>
       <div class="write-controls">
-        <button class="write-btn clear" id="writeClearBtn">🧹 Xóa</button>
-        <button class="write-btn done" id="writeDoneBtn">✅ Xong rồi!</button>
+        <button class="write-btn clear" id="writeClearBtn">🔄 Làm lại</button>
       </div>
     </div>
   </div>
@@ -650,7 +643,7 @@
     <div class="stat-row"><span>🧮 Đố vui toán</span><b id="statMath">0:00</b></div>
     <div class="stat-row"><span>🔡 Ghép chữ</span><b id="statWord">0:00</b></div>
     <div class="stat-row"><span>🃏 Ghép cặp</span><b id="statMemory">0:00</b></div>
-    <div class="stat-row"><span>✍️ Tập viết</span><b id="statWrite">0:00</b></div>
+    <div class="stat-row"><span>✏️ Nối chữ</span><b id="statWrite">0:00</b></div>
     <button class="stats-reset" id="statsReset">🧹 Xoá điểm &amp; thời gian</button>
   </div>
 
@@ -731,6 +724,66 @@
     'X':'xờ','Y':'i'
   };
 
+  // ---------- ĐƯỜNG NÉT "NỐI CHỮ BẰNG ĐIỂM" ----------
+  // Toạ độ trong ô 0..100 (x sang phải, y xuống dưới). Mỗi chữ gồm 1 hay nhiều
+  // "nét" (mảng điểm); bé nối các điểm trong từng nét theo thứ tự đánh số.
+  const CONNECT_BASE = {
+    '0': [[[50,20],[65,28],[70,50],[65,72],[50,80],[35,72],[30,50],[35,28],[50,20]]],
+    '1': [[[38,32],[52,20],[52,80]]],
+    '2': [[[33,32],[50,20],[65,33],[55,52],[33,80],[67,80]]],
+    '3': [[[35,28],[52,20],[64,33],[50,49],[64,64],[52,80],[34,72]]],
+    '4': [[[62,20],[30,60],[72,60]],[[62,20],[62,80]]],
+    '5': [[[64,20],[38,20],[35,46],[54,44],[64,60],[52,80],[33,73]]],
+    '6': [[[62,24],[46,20],[35,40],[31,58],[36,74],[52,80],[64,70],[63,56],[50,49],[37,52]]],
+    '7': [[[33,20],[68,20],[46,80]]],
+    '8': [[[50,22],[60,28],[57,40],[43,40],[40,28],[50,22]],[[50,46],[63,55],[66,70],[50,80],[34,70],[37,55],[50,46]]],
+    '9': [[[62,50],[47,53],[37,40],[45,23],[61,22],[68,40],[64,62],[52,80],[36,76]]],
+    'A': [[[30,82],[50,18],[70,82]],[[38,56],[62,56]]],
+    'B': [[[36,82],[36,18],[60,22],[65,37],[57,50],[36,50],[62,56],[68,70],[58,82],[36,82]]],
+    'C': [[[68,30],[54,19],[38,26],[31,50],[38,74],[54,81],[68,70]]],
+    'D': [[[36,18],[36,82],[58,76],[69,50],[58,24],[36,18]]],
+    'E': [[[66,20],[35,20],[35,80],[66,80]],[[35,50],[58,50]]],
+    'G': [[[68,30],[54,19],[38,26],[31,50],[38,74],[55,81],[68,70],[68,52],[54,52]]],
+    'H': [[[35,18],[35,82]],[[65,18],[65,82]],[[35,50],[65,50]]],
+    'I': [[[40,20],[60,20]],[[50,20],[50,80]],[[40,80],[60,80]]],
+    'K': [[[35,18],[35,82]],[[66,18],[35,52]],[[44,46],[68,82]]],
+    'L': [[[35,18],[35,80],[66,80]]],
+    'M': [[[30,82],[30,18],[50,54],[70,18],[70,82]]],
+    'N': [[[32,82],[32,18],[68,82],[68,18]]],
+    'O': [[[50,18],[66,27],[71,50],[66,73],[50,82],[34,73],[29,50],[34,27],[50,18]]],
+    'P': [[[36,82],[36,18],[60,22],[65,37],[58,51],[36,51]]],
+    'Q': [[[50,18],[66,27],[71,50],[66,73],[50,82],[34,73],[29,50],[34,27],[50,18]],[[56,64],[72,86]]],
+    'R': [[[36,82],[36,18],[60,22],[65,37],[58,51],[36,51]],[[46,51],[68,82]]],
+    'S': [[[66,30],[52,19],[37,27],[42,45],[58,55],[63,69],[48,81],[33,71]]],
+    'T': [[[30,20],[70,20]],[[50,20],[50,82]]],
+    'U': [[[32,18],[32,62],[41,78],[50,81],[59,78],[68,62],[68,18]]],
+    'V': [[[32,18],[50,82],[68,18]]],
+    'X': [[[33,18],[67,82]],[[67,18],[33,82]]],
+    'Y': [[[33,18],[50,52]],[[67,18],[50,52],[50,82]]]
+  };
+  // Dấu phụ (thêm 1 nét lên trên chữ gốc)
+  const CONNECT_MARKS = {
+    breve: [[38,12],[44,17],[56,17],[62,12]],   // ˘  (Ă)
+    circ:  [[41,15],[50,7],[59,15]],            // ^  (Â Ê Ô)
+    hornO: [[66,26],[76,18],[73,30]],           // móc (Ơ)
+    hornU: [[68,20],[78,12],[75,24]],           // móc (Ư)
+    dbar:  [[27,50],[43,50]]                     // gạch ngang (Đ)
+  };
+  const CONNECT_COMPOSED = {
+    'Ă': ['A','breve'], 'Â': ['A','circ'], 'Ê': ['E','circ'],
+    'Ô': ['O','circ'], 'Ơ': ['O','hornO'], 'Ư': ['U','hornU'], 'Đ': ['D','dbar']
+  };
+  function connectPathFor(value){
+    if(CONNECT_BASE[value]) return CONNECT_BASE[value];
+    const comp = CONNECT_COMPOSED[value];
+    if(comp){
+      const base = CONNECT_BASE[comp[0]] || [];
+      const mark = CONNECT_MARKS[comp[1]];
+      return mark ? base.concat([mark]) : base;
+    }
+    return null;
+  }
+
   // Các mốc huy hiệu theo tổng số câu trả lời đúng (bé sưu tập dần, không mất đi)
   const BADGES = [
     { at: 5,   emoji: '🌟', name: 'Ngôi sao nhỏ' },
@@ -752,7 +805,7 @@
     wordQuestion: null,
     wordIndex: 0,
     memory: null,
-    write: { source: 'abc', index: 0, case: 'upper' },
+    write: { source: 'abc', index: 0 },
     correctCount: 0,          // tổng số câu đúng (để mở huy hiệu)
     daily: null,              // { date, correct, goalReached }
     streak: 0,                // số ngày liên tiếp đạt mục tiêu
@@ -779,16 +832,12 @@
     writeArea: document.getElementById('writeArea'),
     writeToggleAbc: document.getElementById('writeToggleAbc'),
     writeToggleNum: document.getElementById('writeToggleNum'),
-    writeCaseToggle: document.getElementById('writeCaseToggle'),
-    writeCaseUpper: document.getElementById('writeCaseUpper'),
-    writeCaseLower: document.getElementById('writeCaseLower'),
     writePrevBtn: document.getElementById('writePrevBtn'),
     writeNextBtn: document.getElementById('writeNextBtn'),
     writePickerToggle: document.getElementById('writePickerToggle'),
     writePicker: document.getElementById('writePicker'),
     writeCanvas: document.getElementById('writeCanvas'),
     writeClearBtn: document.getElementById('writeClearBtn'),
-    writeDoneBtn: document.getElementById('writeDoneBtn'),
     writeExample: document.getElementById('writeExample'),
     speakBtn: document.getElementById('speakBtn'),
     scoreVal: document.getElementById('scoreVal'),
@@ -1341,7 +1390,7 @@
     }
     if(state.mode === 'write'){
       const label = writeLabelText();
-      return `Con hãy tô theo ${label} ${getWriteValue()} nhé!`;
+      return `Con hãy nối các điểm theo số để tạo ${label} ${getWriteValue()} nhé!`;
     }
     const label = state.mode === 'abc' ? 'chữ' : 'số';
     return `Con hãy tìm ${label} ${state.target.display} nhé!`;
@@ -1407,9 +1456,8 @@
       els.targetBig.textContent = '👂';
       els.instructionText.innerHTML = `Con hãy nghe âm rồi chọn chữ đúng nhé! Bấm <b>🔊</b> để nghe lại.`;
     } else if(state.mode === 'write'){
-      els.writeCaseToggle.style.display = state.write.source === 'abc' ? 'flex' : 'none';
       const label = writeLabelText();
-      els.instructionText.innerHTML = `Con hãy tô theo ${label} <b>${getWriteValue()}</b> nhé!`;
+      els.instructionText.innerHTML = `Con hãy nối các điểm theo số để tạo ${label} <b>${getWriteValue()}</b> nhé!`;
       if(els.writePicker.style.display !== 'none') renderWritePicker();
     } else {
       els.objectsRow.style.display = 'none';
@@ -1637,16 +1685,12 @@
   }
 
   function getWriteValue(){
-    if(state.write.source === 'abc'){
-      const letter = LETTERS[state.write.index % LETTERS.length];
-      return state.write.case === 'lower' ? letter.toLowerCase() : letter;
-    }
+    if(state.write.source === 'abc') return LETTERS[state.write.index % LETTERS.length];
     return NUMBERS_LIST[state.write.index % NUMBERS_LIST.length];
   }
 
   function writeLabelText(){
-    if(state.write.source === 'num') return 'số';
-    return state.write.case === 'lower' ? 'chữ thường' : 'chữ HOA';
+    return state.write.source === 'num' ? 'số' : 'chữ';
   }
 
   function updateWriteExample(){
@@ -1684,9 +1728,7 @@
     list.forEach((letter, idx) => {
       const chip = document.createElement('button');
       chip.className = 'write-picker-chip' + (idx === state.write.index ? ' active' : '');
-      chip.textContent = state.write.source === 'abc' && state.write.case === 'lower'
-        ? letter.toLowerCase()
-        : letter;
+      chip.textContent = letter;
       chip.addEventListener('click', () => {
         writeGoToIndex(idx);
         els.writePicker.style.display = 'none';
@@ -1708,16 +1750,9 @@
   });
 
   let writeCtx = null;
-  let writeDrawing = false;
-  let writeLastX = 0, writeLastY = 0;
-  let writePenColor = TILE_COLORS[0];
-  let writePenWidth = 8;
   let lastWriteWrapWidth = 0;
-  // Hai lớp ẩn để chấm điểm nét viết: maskCanvas = chữ mẫu (vùng mục tiêu),
-  // inkCanvas = nét bé viết. So khớp hai lớp này để tính điểm.
-  let maskCanvas = null, maskCtx = null;
-  let inkCanvas = null, inkCtx = null;
-  const WRITE_GUIDE_FONT = 'Playwrite VN Guides';
+  let connect = null;          // trạng thái trò nối chữ hiện tại
+  let connectDragging = false;
 
   function setupWriteCanvas(){
     const canvas = els.writeCanvas;
@@ -1733,148 +1768,142 @@
     updateWriteExample();
     if(!writeCtx) return;
     writeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    writePenColor = TILE_COLORS[state.write.index % TILE_COLORS.length];
-    // Nét bút vừa phải so với kích thước ô viết, không quá dày so với nét chữ mẫu
-    writePenWidth = Math.max(5, Math.min(9, size * 0.028));
 
-    // Chuẩn bị hai lớp ẩn (cùng kích thước) để chấm điểm.
-    if(!maskCanvas) maskCanvas = document.createElement('canvas');
-    if(!inkCanvas) inkCanvas = document.createElement('canvas');
-    maskCanvas.width = canvas.width; maskCanvas.height = canvas.height;
-    inkCanvas.width = canvas.width; inkCanvas.height = canvas.height;
-    maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
-    inkCtx = inkCanvas.getContext('2d', { willReadFrequently: true });
-    maskCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    inkCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    inkCtx.clearRect(0, 0, size, size); // chữ mới → xoá nét cũ
+    // Chuyển toạ độ chuẩn 0..100 sang pixel trên khung, chừa lề.
+    const path = connectPathFor(getWriteValue()) || [];
+    const pad = size * 0.12;
+    const area = size - pad * 2;
+    const map = p => ({ x: pad + p[0] / 100 * area, y: pad + p[1] / 100 * area });
+    // Nét khép kín (điểm đầu trùng điểm cuối) → bỏ điểm lặp và đánh dấu "closed":
+    // sẽ tự nối điểm cuối về điểm đầu, tránh hai số chồng lên nhau.
+    const strokes = path.map(raw => {
+      let pts = raw.map(map);
+      let closed = false;
+      if(pts.length >= 3){
+        const a = pts[0], b = pts[pts.length - 1];
+        if(Math.hypot(a.x - b.x, a.y - b.y) < area * 0.03){ closed = true; pts = pts.slice(0, -1); }
+      }
+      return { pts, closed };
+    });
+    const dots = [];
+    strokes.forEach((s, si) => s.pts.forEach((p, pi) => dots.push({
+      x: p.x, y: p.y, stroke: si, closed: s.closed,
+      last: pi === s.pts.length - 1, firstDot: null, label: dots.length + 1
+    })));
+    strokes.forEach((s, si) => {
+      const firstDot = dots.find(d => d.stroke === si);
+      dots.forEach(d => { if(d.stroke === si) d.firstDot = firstDot; });
+    });
 
-    drawWriteGuide();
-    // Font mẫu chữ tải qua mạng nên có thể chưa sẵn sàng lúc vẽ lần đầu;
-    // vẽ lại khi tải xong để hiện đúng nét chữ chuẩn.
-    if(document.fonts && document.fonts.load){
-      document.fonts.load(`400 100px "${WRITE_GUIDE_FONT}"`)
-        .then(() => { if(state.mode === 'write') drawWriteGuide(); })
-        .catch(() => {});
+    connect = {
+      size, strokes, dots,
+      next: 0, segments: [],
+      color: TILE_COLORS[state.write.index % TILE_COLORS.length],
+      dotR: Math.max(11, Math.min(18, size * 0.045)),
+      snapR: Math.max(20, size * 0.08)
+    };
+    connectDragging = false;
+    drawConnectScene();
+  }
+
+  function drawConnectScene(){
+    if(!writeCtx || !connect) return;
+    const w = connect.size;
+    writeCtx.clearRect(0, 0, w, w);
+
+    // Nền ô li nhạt cho giống vở tập viết
+    writeCtx.save();
+    writeCtx.strokeStyle = '#F1ECFA';
+    writeCtx.lineWidth = 1;
+    const step = w / 8;
+    for(let i = 0; i <= 8; i++){
+      writeCtx.beginPath(); writeCtx.moveTo(i * step, 0); writeCtx.lineTo(i * step, w); writeCtx.stroke();
+      writeCtx.beginPath(); writeCtx.moveTo(0, i * step); writeCtx.lineTo(w, i * step); writeCtx.stroke();
+    }
+    writeCtx.restore();
+
+    // Nét mờ hướng dẫn (đường nối đầy đủ) để bé biết hình chữ
+    writeCtx.save();
+    writeCtx.strokeStyle = '#E4DAF6';
+    writeCtx.lineWidth = Math.max(6, w * 0.03);
+    writeCtx.lineCap = 'round'; writeCtx.lineJoin = 'round';
+    connect.strokes.forEach(s => {
+      writeCtx.beginPath();
+      s.pts.forEach((p, i) => i ? writeCtx.lineTo(p.x, p.y) : writeCtx.moveTo(p.x, p.y));
+      if(s.closed) writeCtx.closePath();
+      writeCtx.stroke();
+    });
+    writeCtx.restore();
+
+    // Các đoạn bé đã nối (màu)
+    writeCtx.save();
+    writeCtx.strokeStyle = connect.color;
+    writeCtx.lineWidth = Math.max(7, w * 0.035);
+    writeCtx.lineCap = 'round'; writeCtx.lineJoin = 'round';
+    connect.segments.forEach(seg => {
+      writeCtx.beginPath();
+      writeCtx.moveTo(seg.a.x, seg.a.y);
+      writeCtx.lineTo(seg.b.x, seg.b.y);
+      writeCtx.stroke();
+    });
+    writeCtx.restore();
+
+    // Các chấm tròn có đánh số
+    const R = connect.dotR;
+    connect.dots.forEach((d, i) => {
+      const reached = i < connect.next;
+      const isNext = i === connect.next;
+      writeCtx.save();
+      writeCtx.beginPath();
+      writeCtx.arc(d.x, d.y, isNext ? R * 1.18 : R, 0, Math.PI * 2);
+      writeCtx.fillStyle = reached ? connect.color : '#ffffff';
+      writeCtx.fill();
+      writeCtx.lineWidth = 3;
+      writeCtx.strokeStyle = isNext ? '#FF7B54' : (reached ? connect.color : '#B9A9E0');
+      writeCtx.stroke();
+      writeCtx.fillStyle = reached ? '#ffffff' : '#6A5B8A';
+      writeCtx.font = `700 ${Math.round(R * 1.05)}px 'Baloo 2', sans-serif`;
+      writeCtx.textAlign = 'center'; writeCtx.textBaseline = 'middle';
+      writeCtx.fillText(String(d.label), d.x, d.y + 1);
+      writeCtx.restore();
+    });
+  }
+
+  // Khi con trỏ tới gần chấm cần nối tiếp theo → nối và tiến tới chấm sau.
+  function connectAt(pos){
+    if(!connect) return;
+    let advanced = false;
+    while(connect.next < connect.dots.length){
+      const d = connect.dots[connect.next];
+      const dx = pos.x - d.x, dy = pos.y - d.y;
+      if(dx * dx + dy * dy <= connect.snapR * connect.snapR){
+        if(connect.next > 0){
+          const prev = connect.dots[connect.next - 1];
+          if(prev.stroke === d.stroke) connect.segments.push({ a: prev, b: d });
+        }
+        if(d.last && d.closed && d.firstDot) connect.segments.push({ a: d, b: d.firstDot });
+        connect.next++;
+        advanced = true;
+      } else break;
+    }
+    if(advanced){
+      drawConnectScene();
+      if(connect.next >= connect.dots.length) onConnectComplete();
     }
   }
 
-  function drawWriteGuide(){
-    if(!writeCtx) return;
-    const canvas = els.writeCanvas;
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.width / dpr;
-    const h = canvas.height / dpr;
-    writeCtx.clearRect(0, 0, w, h);
-
-    // Khung 4 dòng kẻ ô li theo đúng chuẩn vở tập viết tiểu học:
-    // dòng 1 (trên cùng) và dòng 3 (đường kẻ chính - nơi chữ "đứng") là nét liền,
-    // dòng 2 và dòng 4 là nét đứt, chia thân chữ thành 3 vùng:
-    // vùng nét khuyết trên / vùng thân chữ / vùng nét khuyết dưới.
-    const marginX = w * 0.05;
-    const lineTop = h * 0.08;
-    const lineUpperDashed = lineTop + h * 0.38;
-    const lineBaseline = lineUpperDashed + h * 0.30;
-    const lineLowerDashed = lineBaseline + h * 0.16;
-
-    // Khung ô li nhỏ (caro) làm nền, giống hệt vở tập viết thật
-    const squareSize = (lineBaseline - lineUpperDashed) / 3;
-    writeCtx.save();
-    writeCtx.strokeStyle = '#F0EBFA';
-    writeCtx.lineWidth = 1;
-    for(let x = marginX; x <= w - marginX + 0.5; x += squareSize){
-      writeCtx.beginPath();
-      writeCtx.moveTo(x, 0);
-      writeCtx.lineTo(x, h);
-      writeCtx.stroke();
-    }
-    for(let y = lineTop % squareSize; y <= h; y += squareSize){
-      writeCtx.beginPath();
-      writeCtx.moveTo(marginX, y);
-      writeCtx.lineTo(w - marginX, y);
-      writeCtx.stroke();
-    }
-    writeCtx.restore();
-
-    writeCtx.save();
-    writeCtx.strokeStyle = '#C9BFE0';
-    writeCtx.lineWidth = 1.5;
-    const drawRuleLine = (y, dashed) => {
-      writeCtx.beginPath();
-      writeCtx.setLineDash(dashed ? [6, 5] : []);
-      writeCtx.moveTo(marginX, y);
-      writeCtx.lineTo(w - marginX, y);
-      writeCtx.stroke();
-    };
-    drawRuleLine(lineTop, false);
-    drawRuleLine(lineUpperDashed, true);
-    drawRuleLine(lineBaseline, false);
-    drawRuleLine(lineLowerDashed, true);
-    writeCtx.setLineDash([]);
-    writeCtx.restore();
-
-    // Chữ mẫu mờ để bé tô theo — dùng đúng font mô phỏng mẫu chữ tập viết
-    // tiểu học Việt Nam (Playwrite VN). Cỡ chữ dùng tỉ lệ chuẩn theo kiểu chữ
-    // (không đo actualBoundingBox của font đang tải, vì nếu font mẫu chưa kịp
-    // tải xong, trình duyệt sẽ tạm dùng font dự phòng có tỉ lệ rất khác, khiến
-    // phép đo bị sai và chữ hiện ra quá nhỏ). Nhờ vậy chữ luôn to ổn định.
+  function onConnectComplete(){
+    connectDragging = false;
     const value = getWriteValue();
-    const fullAscentZone = lineBaseline - lineTop;
-    const fullDescentZone = lineLowerDashed - lineBaseline;
-    let fontSize;
-
-    if(state.write.source === 'num'){
-      fontSize = fullAscentZone / 0.72;
-    } else if(state.write.case === 'upper'){
-      fontSize = fullAscentZone / 0.78; // chữ HOA, đã chừa chỗ cho dấu mũ/móc
-    } else {
-      const ASCENDER_SET = new Set(['b', 'h', 'k', 'l', 'đ']);
-      const DESCENDER_SET = new Set(['g', 'y']);
-      if(ASCENDER_SET.has(value)){
-        fontSize = fullAscentZone / 0.85;
-      } else {
-        const xHeightZone = lineBaseline - lineUpperDashed;
-        fontSize = xHeightZone / 0.55;
-      }
-      if(DESCENDER_SET.has(value)){
-        fontSize = Math.min(fontSize, fullDescentZone / 0.32);
-      }
-    }
-
-    writeCtx.font = `400 ${fontSize}px "${WRITE_GUIDE_FONT}", "Baloo 2", cursive`;
-    const maxWidth = w - marginX * 2;
-    const widthNow = writeCtx.measureText(value).width;
-    if(widthNow > maxWidth){
-      fontSize *= maxWidth / widthNow;
-      writeCtx.font = `400 ${fontSize}px "${WRITE_GUIDE_FONT}", "Baloo 2", cursive`;
-    }
-
-    writeCtx.save();
-    writeCtx.fillStyle = '#D9CFEF';
-    writeCtx.strokeStyle = '#D9CFEF';
-    writeCtx.lineWidth = Math.max(1.5, fontSize * 0.02);
-    writeCtx.lineJoin = 'round';
-    writeCtx.textAlign = 'center';
-    writeCtx.textBaseline = 'alphabetic';
-    writeCtx.strokeText(value, w / 2, lineBaseline);
-    writeCtx.fillText(value, w / 2, lineBaseline);
-    writeCtx.restore();
-
-    // Vẽ chữ mẫu vào lớp ẩn (đặc, hơi dày hơn để có dung sai cho bé) làm vùng
-    // mục tiêu khi chấm điểm.
-    if(maskCtx){
-      maskCtx.clearRect(0, 0, w, h);
-      maskCtx.save();
-      maskCtx.font = writeCtx.font;
-      maskCtx.fillStyle = '#000';
-      maskCtx.strokeStyle = '#000';
-      maskCtx.lineJoin = 'round';
-      maskCtx.lineWidth = Math.max(2, fontSize * 0.05);
-      maskCtx.textAlign = 'center';
-      maskCtx.textBaseline = 'alphabetic';
-      maskCtx.strokeText(value, w / 2, lineBaseline);
-      maskCtx.fillText(value, w / 2, lineBaseline);
-      maskCtx.restore();
-    }
+    state.score += 10;
+    els.scoreVal.textContent = state.score;
+    playSound(true);
+    registerCorrect();
+    launchConfetti();
+    showWriteResult({ stars: 3, face: '🌟', txt: `Xong ${writeLabelText()} ${value}!` });
+    speak(`Giỏi quá! Con đã nối xong ${writeLabelText()} ${value} rồi!`);
+    state.write.index++;
+    setTimeout(() => renderRound(true), 1300);
   }
 
   function writeCanvasPos(e){
@@ -1882,118 +1911,27 @@
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
 
-  function writePointerDown(e){
-    if(!writeCtx) return;
-    writeDrawing = true;
-    const p = writeCanvasPos(e);
-    writeLastX = p.x; writeLastY = p.y;
-    writeCtx.beginPath();
-    writeCtx.fillStyle = writePenColor;
-    writeCtx.arc(p.x, p.y, writePenWidth / 2, 0, Math.PI * 2);
-    writeCtx.fill();
-    if(inkCtx){
-      inkCtx.beginPath();
-      inkCtx.fillStyle = '#000';
-      inkCtx.arc(p.x, p.y, writePenWidth / 2, 0, Math.PI * 2);
-      inkCtx.fill();
-    }
+  function connectPointerDown(e){
+    if(!connect) return;
+    connectDragging = true;
+    connectAt(writeCanvasPos(e));
     e.preventDefault();
   }
-
-  function writePointerMove(e){
-    if(!writeDrawing || !writeCtx) return;
-    const p = writeCanvasPos(e);
-    writeCtx.strokeStyle = writePenColor;
-    writeCtx.lineWidth = writePenWidth;
-    writeCtx.lineCap = 'round';
-    writeCtx.lineJoin = 'round';
-    writeCtx.beginPath();
-    writeCtx.moveTo(writeLastX, writeLastY);
-    writeCtx.lineTo(p.x, p.y);
-    writeCtx.stroke();
-    if(inkCtx){
-      inkCtx.strokeStyle = '#000';
-      inkCtx.lineWidth = writePenWidth;
-      inkCtx.lineCap = 'round';
-      inkCtx.lineJoin = 'round';
-      inkCtx.beginPath();
-      inkCtx.moveTo(writeLastX, writeLastY);
-      inkCtx.lineTo(p.x, p.y);
-      inkCtx.stroke();
-    }
-    writeLastX = p.x; writeLastY = p.y;
+  function connectPointerMove(e){
+    if(!connectDragging || !connect) return;
+    connectAt(writeCanvasPos(e));
     e.preventDefault();
   }
+  function connectPointerUp(){ connectDragging = false; }
 
-  function writePointerUp(){
-    writeDrawing = false;
-  }
-
-  els.writeCanvas.addEventListener('pointerdown', writePointerDown);
-  els.writeCanvas.addEventListener('pointermove', writePointerMove);
-  window.addEventListener('pointerup', writePointerUp);
-  window.addEventListener('pointercancel', writePointerUp);
+  els.writeCanvas.addEventListener('pointerdown', connectPointerDown);
+  els.writeCanvas.addEventListener('pointermove', connectPointerMove);
+  window.addEventListener('pointerup', connectPointerUp);
+  window.addEventListener('pointercancel', connectPointerUp);
 
   els.writeClearBtn.addEventListener('click', () => {
-    if(inkCtx){
-      const c = els.writeCanvas, dpr = window.devicePixelRatio || 1;
-      inkCtx.clearRect(0, 0, c.width / dpr, c.height / dpr);
-    }
-    drawWriteGuide();
+    if(connect){ connect.next = 0; connect.segments = []; drawConnectScene(); }
   });
-
-  // So khớp nét bé viết với chữ mẫu để chấm điểm.
-  // - độ phủ (coverage): tô được bao nhiêu phần của chữ mẫu
-  // - độ chính xác (precision): nét bé viết có nằm trên chữ không (chống tô bừa)
-  function evaluateWriting(){
-    const pass = { stars:3, pts:10, advance:true, face:'🌟', txt:'Viết đẹp quá!', speak:'Con viết đẹp quá, giỏi lắm!' };
-    const none = { stars:0, pts:0, advance:false, face:'✍️', txt:'Bé hãy tô theo nét chữ nhé!', speak:'Con hãy tô theo nét chữ mờ nhé!' };
-    if(!inkCtx || !maskCtx) return pass;
-
-    const cw = els.writeCanvas.width, ch = els.writeCanvas.height;
-    let inkData, maskData;
-    try{
-      inkData = inkCtx.getImageData(0, 0, cw, ch).data;
-      maskData = maskCtx.getImageData(0, 0, cw, ch).data;
-    }catch(e){ return pass; }
-
-    const GRID = 26;
-    const cellW = cw / GRID, cellH = ch / GRID;
-    const target = new Array(GRID * GRID).fill(0);
-    const ink = new Array(GRID * GRID).fill(0);
-    for(let y = 0; y < ch; y += 2){
-      const cy = Math.min(GRID - 1, (y / cellH) | 0);
-      const row = y * cw;
-      for(let x = 0; x < cw; x += 2){
-        const a = (row + x) * 4 + 3;
-        const cell = cy * GRID + Math.min(GRID - 1, (x / cellW) | 0);
-        if(maskData[a] > 40) target[cell]++;
-        if(inkData[a] > 40) ink[cell]++;
-      }
-    }
-    let targetCells = 0, inkCells = 0, hitCells = 0, inkTotal = 0;
-    for(let i = 0; i < target.length; i++){
-      const t = target[i] > 1, k = ink[i] > 1;
-      if(t) targetCells++;
-      if(k){ inkCells++; inkTotal += ink[i]; }
-      if(t && k) hitCells++;
-    }
-    // Không đọc được chữ mẫu (font chưa tải) → không chấm gắt, cho qua.
-    if(targetCells < 4) return pass;
-    // Bé chưa vẽ gì đáng kể.
-    if(inkCells < 3 || inkTotal < 12) return none;
-
-    const coverage = hitCells / targetCells;
-    const precision = hitCells / inkCells;
-
-    if(coverage >= 0.62 && precision >= 0.45)
-      return { stars:3, pts:10, advance:true, face:'🌟', txt:'Viết đẹp quá!', speak:'Con viết đẹp quá, giỏi lắm!' };
-    if(coverage >= 0.40 && precision >= 0.32)
-      return { stars:2, pts:6, advance:true, face:'😊', txt:'Giỏi lắm, gần đúng rồi!', speak:'Giỏi lắm, con viết gần đúng rồi!' };
-    if(coverage >= 0.20)
-      return { stars:1, pts:3, advance:true, face:'🙂', txt:'Cố lên, tô kỹ hơn nhé!', speak:'Con tô kỹ hơn theo nét chữ nhé!' };
-    return { stars:0, pts:0, advance:false, face:'✍️', txt:'Bé tô lại theo nét chữ mờ nhé!', speak:'Con tô lại theo nét chữ mờ nhé!' };
-  }
 
   function showWriteResult(info){
     const card = document.createElement('div');
@@ -2004,25 +1942,6 @@
     els.feedback.appendChild(card);
     setTimeout(() => { els.feedback.innerHTML = ''; }, 1300);
   }
-
-  els.writeDoneBtn.addEventListener('click', () => {
-    const info = evaluateWriting();
-    showWriteResult(info);
-    if(info.pts > 0){
-      state.score += info.pts;
-      els.scoreVal.textContent = state.score;
-      playSound(true);
-      registerCorrect();
-      if(info.stars >= 2) launchConfetti();
-    } else {
-      playSound(false);
-    }
-    speak(info.speak);
-    if(info.advance){
-      state.write.index++;
-      setTimeout(() => renderRound(true), 1100);
-    }
-  });
 
   els.writeToggleAbc.addEventListener('click', () => {
     if(state.write.source === 'abc') return;
@@ -2041,24 +1960,6 @@
     els.writeToggleNum.classList.add('active');
     els.writeToggleAbc.classList.remove('active');
     els.writePicker.style.display = 'none';
-    renderRound(true);
-  });
-
-  els.writeCaseUpper.addEventListener('click', () => {
-    if(state.write.case === 'upper') return;
-    state.write.case = 'upper';
-    els.writeCaseUpper.classList.add('active');
-    els.writeCaseLower.classList.remove('active');
-    if(els.writePicker.style.display !== 'none') renderWritePicker();
-    renderRound(true);
-  });
-
-  els.writeCaseLower.addEventListener('click', () => {
-    if(state.write.case === 'lower') return;
-    state.write.case = 'lower';
-    els.writeCaseLower.classList.add('active');
-    els.writeCaseUpper.classList.remove('active');
-    if(els.writePicker.style.display !== 'none') renderWritePicker();
     renderRound(true);
   });
 
