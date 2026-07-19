@@ -2396,6 +2396,57 @@
       cRect(c,s,0.72,0.44,0.1,0.22);             // tay phải
       cRect(c,s,0.36,0.74,0.1,0.12);             // chân trái
       cRect(c,s,0.54,0.74,0.1,0.12);             // chân phải
+    }},
+    { name:'Kem', draw:(c,s)=>{
+      cTri(c,s,0.35,0.55,0.65,0.55,0.5,0.9);     // ốc quế
+      cCirc(c,s,0.5,0.48,0.16);                  // viên kem dưới
+      cCirc(c,s,0.5,0.3,0.12);                   // viên kem trên
+      cCirc(c,s,0.5,0.15,0.04);                  // quả anh đào
+      cLine(c,s,0.5,0.15,0.53,0.09);             // cuống
+    }},
+    { name:'Thuyền buồm', draw:(c,s)=>{
+      c.beginPath(); c.moveTo(0.24*s,0.64*s); c.lineTo(0.76*s,0.64*s); c.lineTo(0.68*s,0.76*s); c.lineTo(0.32*s,0.76*s); c.closePath(); c.stroke();  // thân thuyền
+      cRect(c,s,0.485,0.22,0.03,0.42);           // cột buồm
+      cTri(c,s,0.485,0.24,0.485,0.6,0.28,0.6);   // buồm trái
+      cTri(c,s,0.515,0.28,0.515,0.58,0.66,0.58); // buồm phải
+      cLine(c,s,0.08,0.8,0.92,0.8);              // mặt nước
+    }},
+    { name:'Ông mặt trời', draw:(c,s)=>{
+      cCirc(c,s,0.32,0.32,0.15);                 // mặt trời
+      for(let k=0;k<8;k++){ const a=k*Math.PI/4;
+        cLine(c,s, 0.32+Math.cos(a)*0.18, 0.32+Math.sin(a)*0.18, 0.32+Math.cos(a)*0.24, 0.32+Math.sin(a)*0.24); }
+      cCirc(c,s,0.27,0.3,0.02); cCirc(c,s,0.37,0.3,0.02);  // mắt
+      cCirc(c,s,0.58,0.64,0.09);                 // mây
+      cCirc(c,s,0.7,0.6,0.11);
+      cCirc(c,s,0.82,0.64,0.08);
+      cLine(c,s,0.55,0.72,0.86,0.72);            // đáy mây
+    }},
+    { name:'Bóng bay', draw:(c,s)=>{
+      cEll(c,s,0.4,0.34,0.16,0.2);               // bóng 1
+      cTri(c,s,0.4,0.53,0.37,0.57,0.43,0.57);    // nút
+      c.beginPath(); c.moveTo(0.4*s,0.57*s); c.bezierCurveTo(0.47*s,0.68*s,0.33*s,0.78*s,0.4*s,0.9*s); c.stroke();  // dây
+      cEll(c,s,0.64,0.4,0.12,0.15);              // bóng 2
+      cTri(c,s,0.64,0.54,0.61,0.58,0.67,0.58);   // nút
+      c.beginPath(); c.moveTo(0.64*s,0.58*s); c.bezierCurveTo(0.7*s,0.7*s,0.6*s,0.8*s,0.64*s,0.9*s); c.stroke();
+    }},
+    { name:'Con gấu', draw:(c,s)=>{
+      cCirc(c,s,0.32,0.3,0.1);                   // tai trái
+      cCirc(c,s,0.68,0.3,0.1);                   // tai phải
+      cCirc(c,s,0.32,0.3,0.05);                  // trong tai trái
+      cCirc(c,s,0.68,0.3,0.05);                  // trong tai phải
+      cCirc(c,s,0.5,0.52,0.26);                  // đầu
+      cCirc(c,s,0.41,0.47,0.03); cCirc(c,s,0.59,0.47,0.03);  // mắt
+      cEll(c,s,0.5,0.62,0.12,0.09);              // mõm
+      cTri(c,s,0.5,0.57,0.46,0.62,0.54,0.62);    // mũi
+    }},
+    { name:'Con ếch', draw:(c,s)=>{
+      cCirc(c,s,0.36,0.34,0.1);                  // mắt lồi trái
+      cCirc(c,s,0.64,0.34,0.1);                  // mắt lồi phải
+      cCirc(c,s,0.36,0.35,0.03); cCirc(c,s,0.64,0.35,0.03);  // con ngươi
+      cCirc(c,s,0.5,0.56,0.26);                  // thân
+      cEll(c,s,0.5,0.66,0.1,0.03);               // miệng
+      cEll(c,s,0.3,0.78,0.08,0.05);              // chân trái
+      cEll(c,s,0.7,0.78,0.08,0.05);              // chân phải
     }}
   ];
 
