@@ -1,6 +1,6 @@
 /* Service worker cho "Bé Vui Học" — giúp cài đặt như ứng dụng và chơi offline.
    Tăng số phiên bản CACHE mỗi khi cập nhật để trình duyệt tải lại bản mới. */
-const CACHE = 'be-vui-hoc-v6';
+const CACHE = 'be-vui-hoc-v7';
 
 // Các tệp cốt lõi cần có sẵn để chơi khi không có mạng (dùng đường dẫn tương đối
 // để hoạt động cả khi trang đặt trong thư mục con, ví dụ GitHub Pages).
