@@ -71,6 +71,22 @@
     text-shadow:0 3px 0 rgba(0,0,0,0.15);
     letter-spacing:0.3px;
   }
+  .top-right{
+    display:flex;align-items:center;gap:10px;
+  }
+  .sound-toggle{
+    background:var(--white);
+    border:none;
+    border-radius:50%;
+    width:42px;height:42px;
+    font-size:20px;
+    cursor:pointer;
+    box-shadow:0 4px 0 #e4d9c2;
+    line-height:1;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .sound-toggle:active{transform:translateY(3px);box-shadow:none;}
+  .sound-toggle.off{opacity:0.55;}
   .score-pill{
     background:var(--white);
     border-radius:999px;
@@ -537,7 +553,10 @@
       <div class="owl">🦉</div>
       <h1>Bé Vui Học</h1>
     </div>
-    <div class="score-pill">⭐ <span id="scoreVal">0</span></div>
+    <div class="top-right">
+      <button class="sound-toggle" id="soundToggle" title="Bật/tắt loa" aria-label="Bật hoặc tắt loa">🔊</button>
+      <div class="score-pill">⭐ <span id="scoreVal">0</span></div>
+    </div>
   </div>
 
   <div class="mode-select">
@@ -857,6 +876,7 @@
     mode: 'abc', // 'abc' | 'listen' | 'num' | 'math' | 'word' | 'memory' | 'write'
     level: 1,
     score: 0,
+    soundOn: true,
     target: null,
     tiles: [],
     mathQuestion: null,
@@ -901,6 +921,7 @@
     writeClearBtn: document.getElementById('writeClearBtn'),
     writeExample: document.getElementById('writeExample'),
     speakBtn: document.getElementById('speakBtn'),
+    soundToggle: document.getElementById('soundToggle'),
     scoreVal: document.getElementById('scoreVal'),
     feedback: document.getElementById('feedback'),
     statsToggle: document.getElementById('statsToggle'),
@@ -1075,6 +1096,7 @@
   }
 
   function speak(text){
+    if(!state.soundOn) return;
     if(!('speechSynthesis' in window)){
       showTtsWarning();
       return;
@@ -1119,6 +1141,7 @@
     return audioCtx;
   }
   function playSound(correct){
+    if(!state.soundOn) return;
     const ctx = ensureAudio();
     if(!ctx) return;
     if(ctx.state === 'suspended'){ try{ ctx.resume(); }catch(e){} }
@@ -1182,7 +1205,8 @@
         correctCount: state.correctCount,
         daily: state.daily,
         streak: state.streak,
-        lastGoalDate: state.lastGoalDate
+        lastGoalDate: state.lastGoalDate,
+        soundOn: state.soundOn
       }));
     }catch(e){ /* localStorage có thể bị chặn (chế độ ẩn danh) — bỏ qua */ }
   }
@@ -1212,6 +1236,7 @@
       }
       if(typeof data.streak === 'number' && data.streak >= 0) state.streak = data.streak;
       if(typeof data.lastGoalDate === 'string') state.lastGoalDate = data.lastGoalDate;
+      if(typeof data.soundOn === 'boolean') state.soundOn = data.soundOn;
     }catch(e){ /* dữ liệu hỏng — bỏ qua, chơi lại từ đầu */ }
   }
 
@@ -2090,6 +2115,22 @@
   });
   els.speakBtn.addEventListener('click', () => speak(currentInstructionText()));
 
+  function updateSoundToggle(){
+    els.soundToggle.textContent = state.soundOn ? '🔊' : '🔇';
+    els.soundToggle.classList.toggle('off', !state.soundOn);
+  }
+  els.soundToggle.addEventListener('click', () => {
+    state.soundOn = !state.soundOn;
+    updateSoundToggle();
+    saveProgress();
+    if(!state.soundOn){
+      if('speechSynthesis' in window){ try{ window.speechSynthesis.cancel(); }catch(e){} }
+    } else {
+      unlockAudio();
+      playSound(true); // tiếng báo nhỏ xác nhận đã bật loa
+    }
+  });
+
   // Khôi phục điểm, thời gian, chế độ & cấp độ đã lưu (nếu có) lên giao diện.
   function applyRestoredState(){
     els.scoreVal.textContent = state.score;
@@ -2104,6 +2145,7 @@
 
   loadProgress();
   applyRestoredState();
+  updateSoundToggle();
   updateGoalUI();
   renderRound(false);
 })();
