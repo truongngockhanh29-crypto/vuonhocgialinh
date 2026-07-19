@@ -259,6 +259,8 @@
     background:#EFE6D0;color:var(--plum);cursor:pointer;
   }
   .write-toggle-btn.active{background:var(--sky-deep);color:#fff;}
+  .write-toggle-btn.case-btn.active{background:var(--coral);}
+  #writeCaseToggle{margin-top:-6px;}
   .write-nav{
     display:flex;align-items:center;justify-content:center;gap:10px;
     margin:10px 0 4px;
@@ -613,6 +615,10 @@
         <button class="write-toggle-btn active" id="writeToggleAbc">🔤 Chữ cái</button>
         <button class="write-toggle-btn" id="writeToggleNum">🔢 Con số</button>
       </div>
+      <div class="write-toggle" id="writeCaseToggle">
+        <button class="write-toggle-btn case-btn active" id="writeCaseUpper">Chữ HOA</button>
+        <button class="write-toggle-btn case-btn" id="writeCaseLower">chữ thường</button>
+      </div>
 
       <div class="write-nav">
         <button class="write-nav-btn" id="writePrevBtn" title="Chữ trước">◀</button>
@@ -763,7 +769,7 @@
   };
   // Dấu phụ (thêm 1 nét lên trên chữ gốc), đặt cao và giãn rộng cho thoáng.
   const CONNECT_MARKS = {
-    breve: [[36,10],[43,16],[57,16],[64,10]],   // ˘  (Ă)
+    breve: [[37,9],[50,17],[63,9]],             // ˘  (Ă)
     circ:  [[40,13],[50,3],[60,13]],            // ^  (Â Ê Ô)
     hornO: [[72,18],[84,9],[80,23]],            // móc (Ơ)
     hornU: [[72,12],[84,3],[80,17]],            // móc (Ư)
@@ -773,19 +779,67 @@
     'Ă': ['A','breve'], 'Â': ['A','circ'], 'Ê': ['E','circ'],
     'Ô': ['O','circ'], 'Ơ': ['O','hornO'], 'Ư': ['U','hornU'], 'Đ': ['D','dbar']
   };
+
+  // Chữ thường. Vùng: chân chữ (baseline) y78, đỉnh thân x-height y46,
+  // nét nhô trên y16, nét thò xuống y94.
+  const CONNECT_LOWER = {
+    'a': [[[64,53],[52,46],[40,51],[35,63],[41,75],[55,77],[64,69]],[[64,47],[64,78]]],
+    'b': [[[35,16],[35,78]],[[35,57],[47,51],[59,55],[64,65],[58,75],[45,78],[35,71]]],
+    'c': [[[64,53],[52,46],[40,50],[35,62],[40,74],[52,78],[64,71]]],
+    'd': [[[64,16],[64,78]],[[64,57],[52,51],[40,55],[35,65],[41,75],[53,78],[64,71]]],
+    'e': [[[36,62],[64,62],[64,53],[52,46],[40,50],[35,62],[41,74],[55,78],[65,71]]],
+    'g': [[[63,53],[51,46],[40,50],[36,60],[42,70],[54,72],[63,65]],[[63,47],[63,84],[55,93],[41,92]]],
+    'h': [[[35,16],[35,78]],[[35,58],[46,51],[58,55],[62,66],[62,78]]],
+    'i': [[[50,46],[50,78]],[[50,30]]],
+    'k': [[[36,16],[36,78]],[[60,52],[36,66]],[[44,61],[62,78]]],
+    'l': [[[50,16],[50,73],[58,78]]],
+    'm': [[[33,50],[33,78]],[[33,56],[42,50],[50,56],[50,78]],[[50,56],[59,50],[67,56],[67,78]]],
+    'n': [[[35,50],[35,78]],[[35,56],[45,50],[57,55],[62,66],[62,78]]],
+    'o': [[[50,46],[61,50],[65,62],[61,74],[50,78],[39,74],[35,62],[39,50],[50,46]]],
+    'p': [[[35,46],[35,94]],[[35,52],[47,46],[59,51],[64,62],[58,72],[46,74],[35,68]]],
+    'q': [[[64,46],[64,94]],[[64,52],[52,46],[40,51],[35,62],[41,72],[53,74],[64,68]]],
+    'r': [[[38,46],[38,78]],[[38,57],[48,49],[61,49]]],
+    's': [[[63,52],[50,46],[39,50],[42,60],[57,66],[61,73],[49,78],[36,72]]],
+    't': [[[46,30],[46,72],[55,78]],[[35,48],[60,48]]],
+    'u': [[[35,46],[35,70],[45,77],[57,76],[64,68]],[[64,46],[64,78]]],
+    'v': [[[35,46],[50,78],[65,46]]],
+    'x': [[[36,46],[64,78]],[[64,46],[36,78]]],
+    'y': [[[35,46],[50,76]],[[65,46],[50,76],[42,92],[30,93]]]
+  };
+  const CONNECT_LOWER_MARKS = {
+    breve: [[38,24],[50,32],[62,24]],
+    circ:  [[40,30],[50,20],[60,30]],
+    hornO: [[64,44],[75,36],[72,48]],
+    hornU: [[66,40],[77,32],[74,45]],
+    dbar:  [[56,26],[73,26]]
+  };
+  const CONNECT_LOWER_COMPOSED = {
+    'ă': ['a','breve'], 'â': ['a','circ'], 'ê': ['e','circ'],
+    'ô': ['o','circ'], 'ơ': ['o','hornO'], 'ư': ['u','hornU'], 'đ': ['d','dbar']
+  };
+
   function connectPathFor(value){
+    // Chữ HOA & chữ số
     if(CONNECT_BASE[value]) return CONNECT_BASE[value];
-    const comp = CONNECT_COMPOSED[value];
-    if(!comp) return null;
-    const markName = comp[1];
-    let base = CONNECT_BASE[comp[0]] || [];
-    // Dấu đặt phía trên (mũ ^, dấu ă): nén thân chữ xuống thấp hơn để chừa
-    // khoảng trống phía trên, tránh chấm của dấu chồng lên chấm của chữ.
-    if(markName === 'circ' || markName === 'breve'){
-      base = base.map(s => s.map(p => [p[0], 30 + (p[1] - 18) * 0.84]));
+    const up = CONNECT_COMPOSED[value];
+    if(up){
+      let base = CONNECT_BASE[up[0]] || [];
+      // Dấu mũ/á đặt trên: nén thân chữ xuống chừa chỗ cho dấu.
+      if(up[1] === 'circ' || up[1] === 'breve'){
+        base = base.map(s => s.map(p => [p[0], 30 + (p[1] - 18) * 0.84]));
+      }
+      const mark = CONNECT_MARKS[up[1]];
+      return mark ? base.concat([mark]) : base;
     }
-    const mark = CONNECT_MARKS[markName];
-    return mark ? base.concat([mark]) : base;
+    // Chữ thường (dấu đặt trong khoảng trống phía trên thân chữ, không cần nén)
+    if(CONNECT_LOWER[value]) return CONNECT_LOWER[value];
+    const lo = CONNECT_LOWER_COMPOSED[value];
+    if(lo){
+      const base = CONNECT_LOWER[lo[0]] || [];
+      const mark = CONNECT_LOWER_MARKS[lo[1]];
+      return mark ? base.concat([mark]) : base;
+    }
+    return null;
   }
 
   // Các mốc huy hiệu theo tổng số câu trả lời đúng (bé sưu tập dần, không mất đi)
@@ -809,7 +863,7 @@
     wordQuestion: null,
     wordIndex: 0,
     memory: null,
-    write: { source: 'abc', index: 0 },
+    write: { source: 'abc', index: 0, case: 'upper' },
     correctCount: 0,          // tổng số câu đúng (để mở huy hiệu)
     daily: null,              // { date, correct, goalReached }
     streak: 0,                // số ngày liên tiếp đạt mục tiêu
@@ -836,6 +890,9 @@
     writeArea: document.getElementById('writeArea'),
     writeToggleAbc: document.getElementById('writeToggleAbc'),
     writeToggleNum: document.getElementById('writeToggleNum'),
+    writeCaseToggle: document.getElementById('writeCaseToggle'),
+    writeCaseUpper: document.getElementById('writeCaseUpper'),
+    writeCaseLower: document.getElementById('writeCaseLower'),
     writePrevBtn: document.getElementById('writePrevBtn'),
     writeNextBtn: document.getElementById('writeNextBtn'),
     writePickerToggle: document.getElementById('writePickerToggle'),
@@ -1460,6 +1517,7 @@
       els.targetBig.textContent = '👂';
       els.instructionText.innerHTML = `Con hãy nghe âm rồi chọn chữ đúng nhé! Bấm <b>🔊</b> để nghe lại.`;
     } else if(state.mode === 'write'){
+      els.writeCaseToggle.style.display = state.write.source === 'abc' ? 'flex' : 'none';
       const label = writeLabelText();
       els.instructionText.innerHTML = `Con hãy nối các điểm theo số để tạo ${label} <b>${getWriteValue()}</b> nhé!`;
       if(els.writePicker.style.display !== 'none') renderWritePicker();
@@ -1689,12 +1747,16 @@
   }
 
   function getWriteValue(){
-    if(state.write.source === 'abc') return LETTERS[state.write.index % LETTERS.length];
+    if(state.write.source === 'abc'){
+      const letter = LETTERS[state.write.index % LETTERS.length];
+      return state.write.case === 'lower' ? letter.toLowerCase() : letter;
+    }
     return NUMBERS_LIST[state.write.index % NUMBERS_LIST.length];
   }
 
   function writeLabelText(){
-    return state.write.source === 'num' ? 'số' : 'chữ';
+    if(state.write.source === 'num') return 'số';
+    return state.write.case === 'lower' ? 'chữ thường' : 'chữ HOA';
   }
 
   function updateWriteExample(){
@@ -1732,7 +1794,7 @@
     list.forEach((letter, idx) => {
       const chip = document.createElement('button');
       chip.className = 'write-picker-chip' + (idx === state.write.index ? ' active' : '');
-      chip.textContent = letter;
+      chip.textContent = (state.write.source === 'abc' && state.write.case === 'lower') ? letter.toLowerCase() : letter;
       chip.addEventListener('click', () => {
         writeGoToIndex(idx);
         els.writePicker.style.display = 'none';
@@ -1964,6 +2026,24 @@
     els.writeToggleNum.classList.add('active');
     els.writeToggleAbc.classList.remove('active');
     els.writePicker.style.display = 'none';
+    renderRound(true);
+  });
+
+  els.writeCaseUpper.addEventListener('click', () => {
+    if(state.write.case === 'upper') return;
+    state.write.case = 'upper';
+    els.writeCaseUpper.classList.add('active');
+    els.writeCaseLower.classList.remove('active');
+    if(els.writePicker.style.display !== 'none') renderWritePicker();
+    renderRound(true);
+  });
+
+  els.writeCaseLower.addEventListener('click', () => {
+    if(state.write.case === 'lower') return;
+    state.write.case = 'lower';
+    els.writeCaseLower.classList.add('active');
+    els.writeCaseUpper.classList.remove('active');
+    if(els.writePicker.style.display !== 'none') renderWritePicker();
     renderRound(true);
   });
 
