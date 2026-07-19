@@ -132,6 +132,7 @@
   .mode-card.write{border-bottom:6px solid var(--sun);}
   .mode-card.listen{border-bottom:6px solid #4DD0C4;}
   .mode-card.color{border-bottom:6px solid #F17BA6;}
+  .mode-card.puzzle{border-bottom:6px solid #6FCF97;}
   .mode-card.selected{outline:4px solid var(--sun);}
 
   .level-row{
@@ -265,6 +266,23 @@
     cursor:default;
     opacity:0.75;
   }
+
+  /* ---------- GHÉP HÌNH ---------- */
+  .puzzle-area{ margin-top:2px; }
+  .puzzle-board{
+    display:grid;gap:5px;
+    max-width:min(94vw,420px);margin:0 auto;
+    aspect-ratio:1/1;
+    background:#EFE6D0;border-radius:16px;padding:6px;
+    touch-action:manipulation;
+  }
+  .puzzle-tile{
+    border:none;padding:0;cursor:pointer;
+    border-radius:8px;
+    background-color:#fff;background-repeat:no-repeat;
+    box-shadow:0 2px 0 rgba(0,0,0,0.08);
+  }
+  .puzzle-tile.selected{ outline:4px solid var(--sun);outline-offset:-2px; }
 
   /* ---------- TÔ MÀU ---------- */
   .color-area{ margin-top:2px; }
@@ -619,6 +637,10 @@
       <span class="ico">🎨</span>
       Tô Màu
     </button>
+    <button class="mode-card puzzle" id="modePuzzle">
+      <span class="ico">🧩</span>
+      Ghép Hình
+    </button>
   </div>
 
   <div class="level-row">
@@ -702,6 +724,16 @@
         <button class="write-btn clear" id="colorResetBtn">🔄 Làm lại</button>
       </div>
     </div>
+
+    <div class="puzzle-area" id="puzzleArea" style="display:none;">
+      <div class="color-nav">
+        <button class="write-nav-btn" id="puzzlePrevBtn" title="Hình trước">◀</button>
+        <button class="write-btn clear" id="puzzleShuffleBtn">🔀 Trộn lại</button>
+        <button class="write-nav-btn" id="puzzleNextBtn" title="Hình sau">▶</button>
+      </div>
+      <div class="puzzle-board" id="puzzleBoard"></div>
+      <div class="write-hint">Chạm vào 2 ô để đổi chỗ, xếp lại cho đúng hình nhé!</div>
+    </div>
   </div>
 
   <button class="install-btn" id="installBtn" style="display:none;">📲 Cài ứng dụng vào máy</button>
@@ -717,6 +749,7 @@
     <div class="stat-row"><span>🃏 Ghép cặp</span><b id="statMemory">0:00</b></div>
     <div class="stat-row"><span>✏️ Nối chữ</span><b id="statWrite">0:00</b></div>
     <div class="stat-row"><span>🎨 Tô màu</span><b id="statColor">0:00</b></div>
+    <div class="stat-row"><span>🧩 Ghép hình</span><b id="statPuzzle">0:00</b></div>
     <button class="stats-reset" id="statsReset">🧹 Xoá điểm &amp; thời gian</button>
   </div>
 
@@ -921,11 +954,12 @@
   const DAILY_GOAL = 10; // số câu đúng cần đạt trong ngày
 
   const state = {
-    mode: 'abc', // 'abc' | 'listen' | 'num' | 'math' | 'word' | 'memory' | 'write' | 'color'
+    mode: 'abc', // 'abc' | 'listen' | 'num' | 'math' | 'word' | 'memory' | 'write' | 'color' | 'puzzle'
     level: 1,
     score: 0,
     soundOn: true,
     color: { index: 0 },
+    puzzle: { index: 0, n: 2, url: '', order: [], selected: -1, solved: false },
     target: null,
     tiles: [],
     mathQuestion: null,
@@ -955,6 +989,12 @@
     colorNextBtn: document.getElementById('colorNextBtn'),
     colorResetBtn: document.getElementById('colorResetBtn'),
     colorPicName: document.getElementById('colorPicName'),
+    modePuzzle: document.getElementById('modePuzzle'),
+    puzzleArea: document.getElementById('puzzleArea'),
+    puzzleBoard: document.getElementById('puzzleBoard'),
+    puzzlePrevBtn: document.getElementById('puzzlePrevBtn'),
+    puzzleNextBtn: document.getElementById('puzzleNextBtn'),
+    puzzleShuffleBtn: document.getElementById('puzzleShuffleBtn'),
     levelBtns: document.querySelectorAll('.level-btn'),
     instructionText: document.getElementById('instructionText'),
     targetDisplayBox: document.getElementById('targetDisplayBox'),
@@ -1001,6 +1041,7 @@
     statMemory: document.getElementById('statMemory'),
     statWrite: document.getElementById('statWrite'),
     statColor: document.getElementById('statColor'),
+    statPuzzle: document.getElementById('statPuzzle'),
   };
 
   function tileCountForLevel(){
@@ -1246,7 +1287,7 @@
   document.addEventListener('click', unlockTts, {once:true});
 
   // ---------- THEO DÕI THỜI GIAN CHƠI ----------
-  const timeStats = { abc: 0, listen: 0, num: 0, math: 0, word: 0, memory: 0, write: 0, color: 0 };
+  const timeStats = { abc: 0, listen: 0, num: 0, math: 0, word: 0, memory: 0, write: 0, color: 0, puzzle: 0 };
   let modeStartTime = Date.now();
   let isPageVisible = !document.hidden;
 
@@ -1276,7 +1317,7 @@
       const data = JSON.parse(raw);
       if(typeof data.score === 'number' && data.score >= 0) state.score = data.score;
       if([1, 2, 3].includes(data.level)) state.level = data.level;
-      if(['abc','listen','num','math','word','memory','write','color'].includes(data.mode)) state.mode = data.mode;
+      if(['abc','listen','num','math','word','memory','write','color','puzzle'].includes(data.mode)) state.mode = data.mode;
       if(data.timeStats){
         Object.keys(timeStats).forEach(k => {
           if(typeof data.timeStats[k] === 'number' && data.timeStats[k] >= 0){
@@ -1478,6 +1519,7 @@
     els.statMemory.textContent = formatDuration(timeStats.memory);
     els.statWrite.textContent = formatDuration(timeStats.write);
     els.statColor.textContent = formatDuration(timeStats.color);
+    els.statPuzzle.textContent = formatDuration(timeStats.puzzle);
   }
 
   let saveTick = 0;
@@ -1533,6 +1575,9 @@
     if(state.mode === 'color'){
       return `Con hãy chọn màu rồi chạm vào tranh để tô nhé!`;
     }
+    if(state.mode === 'puzzle'){
+      return `Con hãy chạm vào hai ô để đổi chỗ, xếp lại thành hình đúng nhé!`;
+    }
     if(state.mode === 'listen'){
       return state.target.sound; // đọc đúng âm để bé nghe rồi chọn chữ
     }
@@ -1560,11 +1605,14 @@
     const isMemory = state.mode === 'memory';
     const isWrite = state.mode === 'write';
     const isColor = state.mode === 'color';
-    els.targetDisplayBox.style.display = (isMemory || isWrite || isColor) ? 'none' : 'block';
-    els.tileGrid.style.display = (isMemory || isWrite || isColor) ? 'none' : 'grid';
+    const isPuzzle = state.mode === 'puzzle';
+    const hideMain = isMemory || isWrite || isColor || isPuzzle;
+    els.targetDisplayBox.style.display = hideMain ? 'none' : 'block';
+    els.tileGrid.style.display = hideMain ? 'none' : 'grid';
     els.memoryBoard.style.display = isMemory ? 'grid' : 'none';
     els.writeArea.style.display = isWrite ? 'block' : 'none';
     els.colorArea.style.display = isColor ? 'block' : 'none';
+    els.puzzleArea.style.display = isPuzzle ? 'block' : 'none';
     els.wordSlots.style.display = state.mode === 'word' ? 'flex' : 'none';
 
     if(state.mode === 'math'){
@@ -1601,6 +1649,8 @@
       els.instructionText.innerHTML = `Con hãy lật hai ô để tìm <b>cặp giống nhau</b> nhé!`;
     } else if(state.mode === 'color'){
       els.instructionText.innerHTML = `Con hãy chọn màu rồi <b>chạm vào tranh</b> để tô nhé!`;
+    } else if(state.mode === 'puzzle'){
+      els.instructionText.innerHTML = `Chạm vào <b>2 ô</b> để đổi chỗ, xếp lại thành hình đúng nhé!`;
     } else if(state.mode === 'listen'){
       els.objectsRow.style.display = 'none';
       els.targetBig.style.display = 'block';
@@ -1640,6 +1690,13 @@
     if(state.mode === 'color'){
       renderQuestionArea();
       setupColorCanvas();
+      if(speakAfter) speak(currentInstructionText());
+      return;
+    }
+
+    if(state.mode === 'puzzle'){
+      renderQuestionArea();
+      setupPuzzle();
       if(speakAfter) speak(currentInstructionText());
       return;
     }
@@ -2454,6 +2511,89 @@
   els.colorNextBtn.addEventListener('click', () => colorGoTo(1));
   els.colorResetBtn.addEventListener('click', () => drawColorPicture());
 
+  // ---------- GHÉP HÌNH ----------
+  const PUZZLE_EMOJIS = ['🐶','🐱','🦋','🌸','🚗','🐰','🐟','🍎','🌈','🦁','🐸','⭐','🐢','🌻','🚀','🐬'];
+
+  function emojiDataUrl(emoji, P){
+    const cv = document.createElement('canvas');
+    cv.width = P; cv.height = P;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, P, P);
+    ctx.font = Math.floor(P * 0.78) + 'px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, P / 2, P * 0.54);
+    return cv.toDataURL();
+  }
+
+  function setupPuzzle(){
+    const pz = state.puzzle;
+    pz.n = state.level === 1 ? 2 : state.level === 2 ? 3 : 4;
+    pz.url = emojiDataUrl(PUZZLE_EMOJIS[pz.index % PUZZLE_EMOJIS.length], 360);
+    let order = shuffle([...Array(pz.n * pz.n).keys()]);
+    let guard = 0;
+    while(order.every((v, i) => v === i) && guard++ < 20) order = shuffle(order);
+    pz.order = order;
+    pz.selected = -1;
+    pz.solved = false;
+    renderPuzzleBoard();
+  }
+
+  function renderPuzzleBoard(){
+    const pz = state.puzzle;
+    const n = pz.n;
+    els.puzzleBoard.style.gridTemplateColumns = 'repeat(' + n + ', 1fr)';
+    els.puzzleBoard.innerHTML = '';
+    pz.order.forEach((piece, cell) => {
+      const r = Math.floor(piece / n), c = piece % n;
+      const t = document.createElement('button');
+      t.className = 'puzzle-tile' + (pz.selected === cell ? ' selected' : '');
+      t.style.backgroundImage = 'url(' + pz.url + ')';
+      t.style.backgroundSize = (n * 100) + '% ' + (n * 100) + '%';
+      t.style.backgroundPosition = n > 1
+        ? (c / (n - 1) * 100) + '% ' + (r / (n - 1) * 100) + '%'
+        : 'center';
+      t.setAttribute('data-piece', piece);
+      t.addEventListener('click', () => handlePuzzleTap(cell));
+      els.puzzleBoard.appendChild(t);
+    });
+  }
+
+  function handlePuzzleTap(cell){
+    const pz = state.puzzle;
+    if(pz.solved) return;
+    if(pz.selected === -1){ pz.selected = cell; renderPuzzleBoard(); return; }
+    if(pz.selected === cell){ pz.selected = -1; renderPuzzleBoard(); return; }
+    const a = pz.selected, b = cell;
+    const tmp = pz.order[a]; pz.order[a] = pz.order[b]; pz.order[b] = tmp;
+    pz.selected = -1;
+    renderPuzzleBoard();
+    if(pz.order.every((v, i) => v === i)) onPuzzleSolved();
+  }
+
+  function onPuzzleSolved(){
+    state.puzzle.solved = true;
+    state.score += 10;
+    els.scoreVal.textContent = state.score;
+    playSound(true);
+    registerCorrect();
+    launchConfetti();
+    showWriteResult({ stars: 3, face: '🧩', txt: 'Ghép xong rồi!' });
+    speak('Giỏi quá! Con ghép xong bức tranh rồi!');
+    state.puzzle.index++;
+    setTimeout(() => renderRound(true), 1500);
+  }
+
+  function puzzleGoTo(delta){
+    const n = PUZZLE_EMOJIS.length;
+    state.puzzle.index = ((state.puzzle.index + delta) % n + n) % n;
+    renderRound(false);
+  }
+  els.puzzlePrevBtn.addEventListener('click', () => puzzleGoTo(-1));
+  els.puzzleNextBtn.addEventListener('click', () => puzzleGoTo(1));
+  els.puzzleShuffleBtn.addEventListener('click', () => { if(state.mode === 'puzzle') setupPuzzle(); });
+
   function selectMode(mode){
     flushCurrentModeTime();
     state.mode = mode;
@@ -2465,6 +2605,7 @@
     els.modeMemory.classList.toggle('selected', mode === 'memory');
     els.modeWrite.classList.toggle('selected', mode === 'write');
     els.modeColor.classList.toggle('selected', mode === 'color');
+    els.modePuzzle.classList.toggle('selected', mode === 'puzzle');
     if(mode !== 'write') els.writePicker.style.display = 'none';
     saveProgress();
     renderRound(true);
@@ -2478,6 +2619,7 @@
   els.modeMemory.addEventListener('click', () => selectMode('memory'));
   els.modeWrite.addEventListener('click', () => selectMode('write'));
   els.modeColor.addEventListener('click', () => selectMode('color'));
+  els.modePuzzle.addEventListener('click', () => selectMode('puzzle'));
 
   els.levelBtns.forEach(b => {
     b.addEventListener('click', () => {
@@ -2511,7 +2653,8 @@
     els.scoreVal.textContent = state.score;
     const modeBtns = {
       abc: els.modeAbc, listen: els.modeListen, num: els.modeNum, math: els.modeMath,
-      word: els.modeWord, memory: els.modeMemory, write: els.modeWrite, color: els.modeColor
+      word: els.modeWord, memory: els.modeMemory, write: els.modeWrite, color: els.modeColor,
+      puzzle: els.modePuzzle
     };
     Object.values(modeBtns).forEach(b => b.classList.remove('selected'));
     (modeBtns[state.mode] || els.modeAbc).classList.add('selected');
