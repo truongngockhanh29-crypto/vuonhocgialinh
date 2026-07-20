@@ -1,0 +1,13 @@
+{
+  "name": "vuonhocgialinh",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bé Vui Học – trò chơi học chữ và số cho trẻ mầm non",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  }
+}
